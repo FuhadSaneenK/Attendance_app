@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pro_1/student/student_homepage.dart';
-import 'package:pro_1/teacher/teacher_homepage.dart';
-import 'user_select.dart';
-
-// import 'loginpage.dart'; 
-// import 'student/student_homepage.dart';
+import 'package:pro_1/admin/admin_homepage.dart';
+import 'package:pro_1/user_select.dart';
 
 
 void main() => runApp(AttendanceApp());
@@ -37,8 +33,7 @@ class AttendanceApp extends StatelessWidget {
         ),
       ),
 
-      home:StudentHomePage(),
+      home:UserSelectionPage(),
     );
   }
 }
-

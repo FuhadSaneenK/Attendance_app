@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:pro_1/student/announcement.dart';
+import 'package:pro_1/student/viewannouncement.dart';
 import 'package:pro_1/student/student_profile.dart';
 import 'package:pro_1/student/support.dart';
 import 'package:pro_1/student/view_timetable.dart';

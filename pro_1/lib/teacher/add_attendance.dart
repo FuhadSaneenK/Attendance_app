@@ -10,15 +10,28 @@ class MarkAttendancePage extends StatefulWidget {
 class _MarkAttendancePageState extends State<MarkAttendancePage> {
   String selectedClass = 'Class 10A';
   String selectedSubject = 'Mathematics';
+  String selectedPeriod = '9:00 - 10:00'; // Default first period
   DateTime selectedDate = DateTime.now();
 
-  // Sample subject schedule
-  final subjects = {
-    'Mathematics': '9:00 - 10:00',
-    'Science': '10:05 - 11:05',
-    'English': '11:10 - 12:10',
-    'History': '1:15 - 2:15',
-  };
+  // Sample subject list
+  final subjects = [
+    'Mathematics',
+    'Science', 
+    'English',
+    'History',
+    'Computer Science',
+    'Physical Education'
+  ];
+  
+  // Period timings
+  final periods = [
+    '9:00 - 10:00',
+    '10:05 - 11:05',
+    '11:10 - 12:10',
+    '1:15 - 2:15',
+    '2:20 - 3:20',
+    '3:25 - 4:25',
+  ];
   
   // Sample student data
   final List<Map<String, dynamic>> students = [
@@ -29,11 +42,14 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
     {'name': 'Eva Davis', 'id': '2024005', 'isPresent': true},
   ];
 
+  // Define color scheme
+  final Color primaryColor = Color(0xFF1B5E20);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF1B5E20),
+        backgroundColor: primaryColor,
         title: Text(
           'Mark Attendance',
           style: GoogleFonts.playfairDisplay(
@@ -50,7 +66,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
         children: [
           Container(
             padding: EdgeInsets.all(16),
-            color: Color(0xFF1B5E20).withOpacity(0.1),
+            color: primaryColor.withOpacity(0.1),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -85,7 +101,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Class and Subject Selection
+                    // Class, Subject and Period Selection
                     Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -106,8 +122,15 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                             _buildDropdown(
                               'Subject',
                               selectedSubject,
-                              subjects.keys.toList(),
+                              subjects,
                               (value) => setState(() => selectedSubject = value!),
+                            ),
+                            SizedBox(height: 16),
+                            _buildDropdown(
+                              'Period',
+                              selectedPeriod,
+                              periods,
+                              (value) => setState(() => selectedPeriod = value!),
                             ),
                           ],
                         ),
@@ -119,15 +142,15 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                     Container(
                       padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Color(0xFF1B5E20).withOpacity(0.1),
+                        color: primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.access_time, color: Color(0xFF1B5E20)),
+                          Icon(Icons.access_time, color: primaryColor),
                           SizedBox(width: 12),
                           Text(
-                            subjects[selectedSubject] ?? '',
+                            'Period: $selectedPeriod',
                             style: GoogleFonts.raleway(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -158,7 +181,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                               children: [
                                 TableRow(
                                   decoration: BoxDecoration(
-                                    color: Color(0xFF1B5E20).withOpacity(0.1),
+                                    color: primaryColor.withOpacity(0.1),
                                   ),
                                   children: [
                                     _buildTableHeader('Student Name'),
@@ -178,7 +201,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                                           onChanged: (value) {
                                             setState(() => student['isPresent'] = value);
                                           },
-                                          activeColor: Color(0xFF1B5E20),
+                                          activeColor: primaryColor,
                                         ),
                                       ),
                                     ),
@@ -195,7 +218,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
               ),
             ),
           ),
-          // Submit Button
+          // Submit Button with outline style similar to profile page
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -208,24 +231,40 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                 ),
               ],
             ),
-            child: ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Attendance submitted successfully')),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF1B5E20),
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                'Submit Attendance',
-                style: GoogleFonts.raleway(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Attendance submitted successfully')),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: primaryColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 20,
+                        color: primaryColor,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Submit Attendance',
+                        style: GoogleFonts.raleway(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
