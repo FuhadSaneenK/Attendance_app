@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "490581510765",
-    "project_id": "coa-attendance-apk",
-    "storage_bucket": "coa-attendance-apk.firebasestorage.app"
+    "project_number": "750053333393",
+    "project_id": "coa-main",
+    "storage_bucket": "coa-main.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:490581510765:android:f4ab03be5e2f6569a6cd64",
+        "mobilesdk_app_id": "1:750053333393:android:5356dfaf6ea4e366502230",
         "android_client_info": {
           "package_name": "com.example.pro_1"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBXai9SuG6HEqbVPzDWY0L813UjFiOHjJY"
+          "current_key": "AIzaSyBbalWVKQ8o_JS-TVcWj7dXZIr7AB7UY2o"
         }
       ],
       "services": {

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:file_picker/file_picker.dart';
 
-class AddStudentPage extends StatefulWidget {
+class SingleStudentForm extends StatefulWidget {
   @override
-  _AddStudentPageState createState() => _AddStudentPageState();
+  _SingleStudentFormState createState() => _SingleStudentFormState();
 }
 
-class _AddStudentPageState extends State<AddStudentPage> {
+class _SingleStudentFormState extends State<SingleStudentForm> {
   // Sample data for departments
   final List<String> departments = [
     'Computer Science',
@@ -32,9 +31,6 @@ class _AddStudentPageState extends State<AddStudentPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   bool autoGenerateCredentials = true;
-  
-  // Current selected tab for Add Students section
-  int _currentAddStudentTab = 0;
 
   @override
   void dispose() {
@@ -49,68 +45,7 @@ class _AddStudentPageState extends State<AddStudentPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tabs for Single/Bulk upload
-          Container(
-            margin: EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildAddStudentTabButton(0, 'Single Student'),
-                ),
-                Expanded(
-                  child: _buildAddStudentTabButton(1, 'Bulk Upload'),
-                ),
-              ],
-            ),
-          ),
-          
-          // Content based on selected tab
-          _currentAddStudentTab == 0
-              ? _buildSingleStudentForm()
-              : _buildBulkUploadForm(),
-        ],
-      ),
-    );
-  }
-  
-  // Add Student Tab Button
-  Widget _buildAddStudentTabButton(int index, String label) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentAddStudentTab = index;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: _currentAddStudentTab == index
-              ? Color(0xFF1B5E20)
-              : Colors.transparent,
-          borderRadius: BorderRadius.horizontal(
-            left: index == 0 ? Radius.circular(8) : Radius.zero,
-            right: index == 1 ? Radius.circular(8) : Radius.zero,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: GoogleFonts.raleway(
-            fontWeight: FontWeight.w600,
-            color: _currentAddStudentTab == index ? Colors.white : Colors.grey,
-          ),
-        ),
-      ),
-    );
+    return _buildSingleStudentForm();
   }
   
   // Form for adding a single student
@@ -328,190 +263,6 @@ class _AddStudentPageState extends State<AddStudentPage> {
     );
   }
   
-  // Form for bulk uploading students
-  Widget _buildBulkUploadForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Card(
-          elevation: 2,
-          margin: EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Step 1: Download Template',
-                  style: GoogleFonts.raleway(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1B5E20),
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Download our pre-formatted Excel template with required fields.',
-                  style: GoogleFonts.raleway(),
-                ),
-                SizedBox(height: 12),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.download),
-                  label: Text('Download Template'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF1B5E20),
-                    foregroundColor: Colors.white,
-                    textStyle: GoogleFonts.raleway(),
-                  ),
-                  onPressed: _downloadTemplate,
-                ),
-              ],
-            ),
-          ),
-        ),
-        Card(
-          elevation: 2,
-          margin: EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Step 2: Upload File',
-                  style: GoogleFonts.raleway(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1B5E20),
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Upload your filled CSV/Excel file with student data.',
-                  style: GoogleFonts.raleway(),
-                ),
-                SizedBox(height: 12),
-                Center(
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.upload_file),
-                    label: Text('Select File'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF1B5E20),
-                      foregroundColor: Colors.white,
-                      textStyle: GoogleFonts.raleway(),
-                    ),
-                    onPressed: _pickFile,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        Card(
-          elevation: 2,
-          margin: EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Step 3: Data Validation',
-                  style: GoogleFonts.raleway(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1B5E20),
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'The system will automatically validate your data.',
-                  style: GoogleFonts.raleway(),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '• Checks if departments and batches exist\n• Verifies required fields\n• Identifies duplicate IDs',
-                  style: GoogleFonts.raleway(),
-                ),
-              ],
-            ),
-          ),
-        ),
-        Card(
-          elevation: 2,
-          margin: EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Step 4: Confirm & Add',
-                  style: GoogleFonts.raleway(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1B5E20),
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Review and confirm the entries before adding them.',
-                  style: GoogleFonts.raleway(),
-                ),
-                SizedBox(height: 12),
-                Center(
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.check_circle),
-                    label: Text('Upload & Validate'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF1B5E20),
-                      foregroundColor: Colors.white,
-                      textStyle: GoogleFonts.raleway(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                    ),
-                    onPressed: () {
-                      // This would typically be enabled after a file is selected
-                      _showUploadSuccessMessage();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Method to download the template
-  void _downloadTemplate() async {
-    // This would create an Excel file template in a real app
-    final snackBar = SnackBar(
-      content: Text('Template downloaded successfully'),
-      backgroundColor: Color(0xFF1B5E20),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
-  // Method to pick a file for bulk upload
-  void _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['xlsx', 'csv'],
-    );
-
-    if (result != null) {
-      // In a real app, you would process the file here
-      final snackBar = SnackBar(
-        content: Text('File selected: ${result.files.single.name}'),
-        backgroundColor: Color(0xFF1B5E20),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
   // Method to show success message after adding a student
   void _showSuccessMessage() {
     showDialog(
@@ -545,39 +296,6 @@ class _AddStudentPageState extends State<AddStudentPage> {
                 });
                 usernameController.clear();
                 passwordController.clear();
-              },
-              child: Text(
-                'OK',
-                style: TextStyle(color: Color(0xFF1B5E20)),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Method to show success message after bulk upload
-  void _showUploadSuccessMessage() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Upload Successful',
-            style: GoogleFonts.raleway(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1B5E20),
-            ),
-          ),
-          content: Text(
-            'Students data validated and processed successfully. 15 new students were added.',
-            style: GoogleFonts.raleway(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
               },
               child: Text(
                 'OK',

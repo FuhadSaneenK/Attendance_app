@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'student_login.dart';
-import 'teacher_login.dart';
-import 'admin_login.dart';
+import 'screens/auth/student_login.dart';
+import 'screens/auth/teacher_login.dart';
+import 'screens/auth/admin_login.dart';
 
 class UserSelectionPage extends StatelessWidget {
   @override

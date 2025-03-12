@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pro_1/admin/teacher_part/addteacher.dart';
-import 'package:pro_1/admin/teacher_part/viewteacher.dart';
+import 'package:pro_1/screens/admin/teacher_part/addteacher.dart';
+import 'package:pro_1/screens/admin/teacher_part/viewteacher.dart';
 
 
 class TeacherManagementPage extends StatefulWidget {

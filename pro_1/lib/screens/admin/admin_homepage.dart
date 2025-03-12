@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pro_1/teacher/add_announcement.dart';
-import 'package:pro_1/teacher/add_attendance.dart';
-import 'package:pro_1/teacher/add_timetable.dart';
-import 'package:pro_1/teacher/teacher_profile.dart';
-import 'package:pro_1/teacher/teacher_support.dart';
+import 'package:pro_1/screens/admin/admin-profile.dart';
+import 'package:pro_1/screens/admin/student_part/admin_student_manage.dart';
+import 'package:pro_1/screens/admin/announcement.dart';
+import 'package:pro_1/screens/admin/teacher_part/admin_teacher_manage.dart';
 
-class TeacherHomePage extends StatelessWidget {
+class AdminHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -54,7 +53,7 @@ class TeacherHomePage extends StatelessWidget {
                           ),
                           
                           Text(
-                            'Mr. Johnson',
+                            'Admin',
                             style: GoogleFonts.playfairDisplay(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -64,91 +63,6 @@ class TeacherHomePage extends StatelessWidget {
                           ),
                           
                           SizedBox(height: 24),
-                          
-                          // Redesigned Attendance Card
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => MarkAttendancePage(),
-                                  ),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.08),
-                                      blurRadius: 15,
-                                      offset: Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Color(0xFF1B5E20).withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(15),
-                                      ),
-                                      child: Icon(
-                                        Icons.edit_calendar_rounded,
-                                        color: Color(0xFF1B5E20),
-                                        size: 32,
-                                      ),
-                                    ),
-                                    SizedBox(width: 24),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  'Mark Attendance',
-                                                  style: GoogleFonts.playfairDisplay(
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF1B5E20),
-                                                  ),
-                                                ),
-                                              ),
-                                              Icon(
-                                                Icons.chevron_right,
-                                                color: Color(0xFF1B5E20),
-                                                size: 28,
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Record today\'s class attendance',
-                                            style: GoogleFonts.raleway(
-                                              fontSize: 16,
-                                              color: Colors.grey[600],
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          
-                          SizedBox(height: 32),
                           
                           Text(
                             'Quick Actions',
@@ -161,26 +75,26 @@ class TeacherHomePage extends StatelessWidget {
                           ),
                           SizedBox(height: 20),
                           
+                          // User Management - Now shows a dialog with options
                           _buildMenuItem(
-                            icon: Icons.calendar_month,
-                            title: 'Timetable',
-                            subtitle: 'Manage class schedule',
+                            icon: Icons.people_alt_outlined,
+                            title: 'User Management',
+                            subtitle: 'Manage students & teachers',
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => ManageTimetablePage()),
-                              );
+                              _showUserManagementOptions(context);
                             },
                           ),
                           
                           _buildMenuItem(
                             icon: Icons.announcement_outlined,
                             title: 'Announcements',
-                            subtitle: 'Post new updates',
+                            subtitle: 'Post school-wide updates',
                             onTap: () {
                               Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => CreateAnnouncementPage()),
+                                context, 
+                                MaterialPageRoute(
+                                  builder: (context) => AnnouncementsPage(),
+                                ),
                               );
                             },
                           ),
@@ -191,21 +105,20 @@ class TeacherHomePage extends StatelessWidget {
                             subtitle: 'View and edit your details',
                             onTap: () {
                               Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => TeacherProfile()),
+                                context, 
+                                MaterialPageRoute(
+                                  builder: (context) => AdminProfilePage(),
+                                ),
                               );
                             },
                           ),
 
                           _buildMenuItem(
-                            icon: Icons.support_agent,
-                            title: 'Support',
-                            subtitle: 'Get help and assistance',
+                            icon: Icons.settings_outlined,
+                            title: 'Settings',
+                            subtitle: 'Configure system settings',
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => TeacherSupport()),
-                              );
+                              // Navigate to Settings page
                             },
                           ),
                           
@@ -218,6 +131,115 @@ class TeacherHomePage extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // New method for showing user management options dialog
+  void _showUserManagementOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Icon(Icons.people_alt, color: Color(0xFF1B5E20), size: 28),
+                  SizedBox(width: 16),
+                  Text(
+                    'User Management',
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8),
+            Divider(),
+            ListTile(
+              leading: Icon(
+                Icons.school,
+                color: Color(0xFF1B5E20),
+                size: 28,
+              ),
+              title: Text(
+                'Student Management',
+                style: GoogleFonts.raleway(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              subtitle: Text(
+                'Add, edit, or remove student accounts',
+                style: GoogleFonts.raleway(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to Student Management page
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder: (context) => StudentManagementPage(),
+                  ),
+                );
+              },
+            ),
+            Divider(indent: 70, endIndent: 24),
+            ListTile(
+              leading: Icon(
+                Icons.person_pin,
+                color: Color(0xFF1B5E20),
+                size: 28,
+              ),
+              title: Text(
+                'Teacher Management',
+                style: GoogleFonts.raleway(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              subtitle: Text(
+                'Add, edit, or remove teacher accounts',
+                style: GoogleFonts.raleway(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to Teacher Management page
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder: (context) => TeacherManagementPage(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: 8),
+          ],
         ),
       ),
     );
@@ -249,7 +271,7 @@ class TeacherHomePage extends StatelessWidget {
                     radius: 35,
                     backgroundColor: Color(0xFF1B5E20),
                     child: Text(
-                      'J',
+                      'A',
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 28,
                         color: Colors.white,
@@ -259,7 +281,7 @@ class TeacherHomePage extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Mr. Johnson',
+                    'Admin Portal',
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -267,7 +289,7 @@ class TeacherHomePage extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Senior Faculty',
+                    'System Administrator',
                     style: GoogleFonts.raleway(
                       fontSize: 16,
                       color: Colors.grey[600],
@@ -278,13 +300,91 @@ class TeacherHomePage extends StatelessWidget {
               ),
             ),
             _buildDrawerItem(
+              icon: Icons.dashboard_outlined,
+              title: 'Dashboard',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            // User Management with submenu in drawer
+            ExpansionTile(
+              leading: Icon(Icons.people_alt_outlined, color: Color(0xFF1B5E20), size: 24),
+              title: Text(
+                'User Management',
+                style: GoogleFonts.raleway(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 56),
+                  title: Text(
+                    'Student Management',
+                    style: GoogleFonts.raleway(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  leading: Icon(Icons.school, color: Color(0xFF1B5E20), size: 20),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navigate to Student Management page
+                    Navigator.push(
+                      context, 
+                      MaterialPageRoute(
+                        builder: (context) => StudentManagementPage(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 56),
+                  title: Text(
+                    'Teacher Management',
+                    style: GoogleFonts.raleway(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  leading: Icon(Icons.person_pin, color: Color(0xFF1B5E20), size: 20),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navigate to Teacher Management page
+                    Navigator.push(
+                      context, 
+                      MaterialPageRoute(
+                        builder: (context) => TeacherManagementPage(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            _buildDrawerItem(
+              icon: Icons.announcement_outlined,
+              title: 'Announcements',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder: (context) => AnnouncementsPage(),
+                  ),
+                );
+              },
+            ),
+            _buildDrawerItem(
               icon: Icons.person_outline,
               title: 'Profile',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => TeacherProfile()),
+                  context, 
+                  MaterialPageRoute(
+                    builder: (context) => AdminProfilePage(),
+                  ),
                 );
               },
             ),
@@ -293,17 +393,7 @@ class TeacherHomePage extends StatelessWidget {
               title: 'Settings',
               onTap: () {
                 Navigator.pop(context);
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.help_outline,
-              title: 'Help & Support',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => TeacherSupport()),
-                );
+                // Navigate to Settings page
               },
             ),
             Divider(thickness: 1),
@@ -355,7 +445,7 @@ class TeacherHomePage extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              'Dashboard',
+              'Admin Dashboard',
               style: GoogleFonts.playfairDisplay(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,

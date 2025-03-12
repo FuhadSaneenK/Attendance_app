@@ -1,8 +1,60 @@
-// teacher_login_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pro_1/screens/auth/authentication.dart';
+import 'package:pro_1/screens/student/student_homepage.dart';
 
-class TeacherLoginPage extends StatelessWidget {
+class StudentLoginPage extends StatefulWidget {
+  @override
+  _StudentLoginPageState createState() => _StudentLoginPageState();
+}
+
+class _StudentLoginPageState extends State<StudentLoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  
+  bool _isLoading = false;
+  String _errorMessage = '';
+  bool _obscurePassword = true;
+
+  Future<void> _signIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    AuthResult result = await _authService.signInWithEmailAndPassword(
+      email: _emailController.text,
+      password: _passwordController.text,
+      expectedRole: 'student',
+    );
+
+    if (result.success) {
+      // Navigate to StudentHomePage on successful verification
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentHomePage(),
+        ),
+      );
+    } else {
+      setState(() {
+        _errorMessage = result.errorMessage;
+      });
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +82,7 @@ class TeacherLoginPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Faculty Portal',
+                      'Student Portal',
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -41,7 +93,7 @@ class TeacherLoginPage extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Manage your classes and resources',
+                      'Access your academic resources',
                       style: GoogleFonts.raleway(
                         fontSize: 16,
                         color: Colors.grey[600],
@@ -69,7 +121,7 @@ class TeacherLoginPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Faculty Sign In',
+                            'Student Sign In',
                             style: GoogleFonts.playfairDisplay(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -78,7 +130,7 @@ class TeacherLoginPage extends StatelessWidget {
                           ),
                           SizedBox(height: 24),
                           Text(
-                            'Faculty ID',
+                            'Email',
                             style: GoogleFonts.raleway(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -87,10 +139,11 @@ class TeacherLoginPage extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           TextField(
+                            controller: _emailController,
                             decoration: InputDecoration(
-                              hintText: 'Enter your faculty ID',
+                              hintText: 'Enter your email',
                               prefixIcon: Icon(
-                                Icons.badge_outlined,
+                                Icons.email_outlined,
                                 color: Color(0xFF1B5E20),
                               ),
                               hintStyle: TextStyle(
@@ -98,6 +151,7 @@ class TeacherLoginPage extends StatelessWidget {
                                 fontSize: 14,
                               ),
                             ),
+                            keyboardType: TextInputType.emailAddress,
                           ),
                           SizedBox(height: 20),
                           Text(
@@ -110,30 +164,52 @@ class TeacherLoginPage extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           TextField(
+                            controller: _passwordController,
                             decoration: InputDecoration(
                               hintText: 'Enter your password',
                               prefixIcon: Icon(
                                 Icons.lock_outline,
                                 color: Color(0xFF1B5E20),
                               ),
-                              suffixIcon: Icon(
-                                Icons.visibility_outlined,
-                                color: Colors.grey[400],
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword 
+                                      ? Icons.visibility_outlined 
+                                      : Icons.visibility_off_outlined,
+                                  color: Colors.grey[400],
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
                               ),
                               hintStyle: TextStyle(
                                 color: Colors.grey[400],
                                 fontSize: 14,
                               ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                           ),
+                          
+                          // Display error message if there is one
+                          if (_errorMessage.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12.0),
+                              child: Text(
+                                _errorMessage,
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            
                           SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Handle teacher login logic
-                              },
+                              onPressed: _isLoading ? null : _signIn,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF1B5E20),
                                 foregroundColor: Colors.white,
@@ -143,14 +219,23 @@ class TeacherLoginPage extends StatelessWidget {
                                 ),
                                 elevation: 0,
                               ),
-                              child: Text(
-                                'Sign In',
-                                style: GoogleFonts.raleway(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Sign In',
+                                      style: GoogleFonts.raleway(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
