@@ -48,9 +48,12 @@ dependencies:
   firebase_auth: ^5.5.1
   cloud_firestore: ^5.6.5
   firebase_core_web: ^2.15.0
+  cloud_functions: ^5.3.4
 
   #file process
   process_run: ^0.12.3+2
+  csv: ^5.0.1
+
 
 dev_dependencies:
   flutter_test:

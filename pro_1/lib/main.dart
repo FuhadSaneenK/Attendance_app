@@ -108,7 +108,7 @@ class AttendanceApp extends StatelessWidget {
           ),
         ),
       ),
-      home: AdminHomePage(),
+      home: UserSelectionPage(),
     );
   }
 }

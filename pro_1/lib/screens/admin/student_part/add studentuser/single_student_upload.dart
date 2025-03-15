@@ -73,7 +73,7 @@ class _SingleStudentFormState extends State<SingleStudentForm> {
           TextFormField(
             controller: idController,
             decoration: InputDecoration(
-              labelText: 'Student ID / Roll Number',
+              labelText: 'Admission No',
               border: OutlineInputBorder(),
               labelStyle: GoogleFonts.raleway(),
             ),

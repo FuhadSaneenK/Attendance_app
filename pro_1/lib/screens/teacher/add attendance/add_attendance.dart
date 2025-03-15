@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:pro_1/services/attendance_service.dart';
+import 'package:pro_1/screens/teacher/add%20attendance/attendance_service.dart';
 
 class MarkAttendancePage extends StatefulWidget {
   @override

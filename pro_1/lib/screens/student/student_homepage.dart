@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:pro_1/screens/student/viewannouncement.dart';
-import 'package:pro_1/screens/student/student_profile.dart';
+import 'package:pro_1/screens/student/student%20profile/student_profile.dart';
 import 'package:pro_1/screens/student/support.dart';
 import 'package:pro_1/screens/student/view_timetable.dart';
 import 'package:pro_1/screens/student/weekly_attendance.dart';

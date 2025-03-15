@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pro_1/screens/teacher/add_announcement.dart';
-import 'package:pro_1/screens/teacher/add_attendance.dart';
+import 'package:pro_1/screens/teacher/add%20attendance/add_attendance.dart';
 import 'package:pro_1/screens/teacher/add_timetable.dart';
 import 'package:pro_1/screens/teacher/teacher_profile.dart';
 import 'package:pro_1/screens/teacher/teacher_support.dart';
