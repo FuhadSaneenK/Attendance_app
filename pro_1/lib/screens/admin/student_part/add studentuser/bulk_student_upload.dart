@@ -552,20 +552,21 @@ Future<void> _uploadToFirebase(List<Map<String, dynamic>> students) async {
       print("User created in Firebase Auth: $uid");
 
       // Step 2: Store student details in classes collection with admissionNo as document ID
+       
       await firestore
-          .collection('classes')
-          .doc('Sem${student['semester']}')
-          .collection('Batch${student['batch'].toLowerCase()}')
-          .doc(student['admissionNo']) // Using admissionNo as document ID
-          .set({
-            'name': student['name'],
-            'admissionNo': student['admissionNo'],
-            'semester': student['semester'],
-            'batch': student['batch'],
-            'username': student['username'],
-            'email': email,
-            'authUID': uid, // Reference to Auth UID
-          });
+        .collection('classes')
+        .doc('Sem${student['semester']}')
+        .collection('students')
+        .doc(student['admissionNo']) // Using admissionNo as document ID
+        .set({
+          'name': student['name'],
+          'admissionNo': student['admissionNo'],
+          'semester': student['semester'],
+          'batch': 'Batch ${student['batch']}', // Format as "Batch A", "Batch B", etc.
+          'username': student['username'],
+          'email': email,
+          'authUID': uid, // Reference to Auth UID
+        });
 
       print("Added student to classes: ${student['name']} - ${student['admissionNo']}");
 

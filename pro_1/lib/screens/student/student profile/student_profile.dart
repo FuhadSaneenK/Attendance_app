@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pro_1/user_select.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -502,7 +503,11 @@ class _ProfilePageState extends State<ProfilePage> {
             Icons.logout,
             onTap: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+              // Use this if you have access to a GlobalKey<NavigatorState>
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => UserSelectionPage()),
+                (route) => false,
+              );
             },
           ),
         ],

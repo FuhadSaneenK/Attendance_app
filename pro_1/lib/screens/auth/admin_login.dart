@@ -1,7 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pro_1/screens/auth/authentication.dart';
+import 'package:pro_1/screens/admin/admin_homepage.dart';
 
-class AdminLoginPage extends StatelessWidget {
+class AdminLoginPage extends StatefulWidget {
+  @override
+  _AdminLoginPageState createState() => _AdminLoginPageState();
+}
+
+class _AdminLoginPageState extends State<AdminLoginPage> {
+  final TextEditingController _adminIdController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  
+  bool _isLoading = false;
+  String _errorMessage = '';
+  bool _obscurePassword = true;
+
+  Future<void> _signIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    AuthResult result = await _authService.signInWithEmailAndPassword(
+      email: _adminIdController.text,
+      password: _passwordController.text,
+      expectedRole: 'admin',
+    );
+
+    if (result.success) {
+      // Navigate to AdminHomePage on successful verification
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AdminHomePage(),
+        ),
+      );
+    } else {
+      setState(() {
+        _errorMessage = result.errorMessage;
+      });
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _adminIdController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,6 +149,7 @@ class AdminLoginPage extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           TextField(
+                            controller: _adminIdController,
                             decoration: InputDecoration(
                               hintText: 'Enter your admin ID',
                               prefixIcon: Icon(
@@ -119,6 +173,7 @@ class AdminLoginPage extends StatelessWidget {
                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
                               ),
                             ),
+                            keyboardType: TextInputType.emailAddress,
                           ),
                           SizedBox(height: 20),
                           Text(
@@ -131,15 +186,25 @@ class AdminLoginPage extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           TextField(
+                            controller: _passwordController,
                             decoration: InputDecoration(
                               hintText: 'Enter your password',
                               prefixIcon: Icon(
                                 Icons.lock_outline,
                                 color: Color(0xFF1B5E20),
                               ),
-                              suffixIcon: Icon(
-                                Icons.visibility_outlined,
-                                color: Colors.grey[400],
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword 
+                                      ? Icons.visibility_outlined 
+                                      : Icons.visibility_off_outlined,
+                                  color: Colors.grey[400],
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
                               ),
                               hintStyle: TextStyle(
                                 color: Colors.grey[400],
@@ -158,15 +223,27 @@ class AdminLoginPage extends StatelessWidget {
                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
                               ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                           ),
+                          
+                          // Display error message if there is one
+                          if (_errorMessage.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12.0),
+                              child: Text(
+                                _errorMessage,
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            
                           SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Handle admin login logic
-                              },
+                              onPressed: _isLoading ? null : _signIn,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF1B5E20),
                                 foregroundColor: Colors.white,
@@ -176,14 +253,23 @@ class AdminLoginPage extends StatelessWidget {
                                 ),
                                 elevation: 0,
                               ),
-                              child: Text(
-                                'Sign In',
-                                style: GoogleFonts.raleway(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Sign In',
+                                      style: GoogleFonts.raleway(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
@@ -225,3 +311,252 @@ class AdminLoginPage extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:google_fonts/google_fonts.dart';
+
+// class AdminLoginPage extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: SafeArea(
+//         child: SingleChildScrollView(
+//           child: ConstrainedBox(
+//             constraints: BoxConstraints(
+//               minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top,
+//             ),
+//             child: Container(
+//               decoration: BoxDecoration(
+//                 gradient: LinearGradient(
+//                   begin: Alignment.topCenter,
+//                   end: Alignment.bottomCenter,
+//                   colors: [
+//                     const Color.fromARGB(255, 223, 243, 225),
+//                     Colors.white,
+//                   ],
+//                 ),
+//               ),
+//               child: Padding(
+//                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+//                 child: Column(
+//                   mainAxisAlignment: MainAxisAlignment.center,
+//                   crossAxisAlignment: CrossAxisAlignment.stretch,
+//                   children: [
+//                     Text(
+//                       'Administrative Portal',
+//                       style: GoogleFonts.playfairDisplay(
+//                         fontSize: 28,
+//                         fontWeight: FontWeight.bold,
+//                         color: Color(0xFF1B5E20),
+//                         letterSpacing: 0.5,
+//                       ),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                     SizedBox(height: 8),
+//                     Text(
+//                       'Secure administrative access',
+//                       style: GoogleFonts.raleway(
+//                         fontSize: 16,
+//                         color: Colors.grey[600],
+//                         letterSpacing: 0.5,
+//                       ),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                     SizedBox(height: 32),
+
+//                     // Login Form Section
+//                     Container(
+//                       padding: EdgeInsets.all(24),
+//                       decoration: BoxDecoration(
+//                         color: Colors.white,
+//                         borderRadius: BorderRadius.circular(24),
+//                         boxShadow: [
+//                           BoxShadow(
+//                             color: Colors.black.withOpacity(0.06),
+//                             blurRadius: 30,
+//                             offset: Offset(0, 10),
+//                           ),
+//                         ],
+//                       ),
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Row(
+//                             children: [
+//                               Icon(
+//                                 Icons.admin_panel_settings,
+//                                 color: Color(0xFF1B5E20),
+//                                 size: 28,
+//                               ),
+//                               SizedBox(width: 12),
+//                               Text(
+//                                 'Administrator Sign In',
+//                                 style: GoogleFonts.playfairDisplay(
+//                                   fontSize: 24,
+//                                   fontWeight: FontWeight.bold,
+//                                   color: Color(0xFF1B5E20),
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                           SizedBox(height: 24),
+//                           Text(
+//                             'Admin ID',
+//                             style: GoogleFonts.raleway(
+//                               fontSize: 14,
+//                               fontWeight: FontWeight.w600,
+//                               color: Colors.grey[700],
+//                             ),
+//                           ),
+//                           SizedBox(height: 8),
+//                           TextField(
+//                             decoration: InputDecoration(
+//                               hintText: 'Enter your admin ID',
+//                               prefixIcon: Icon(
+//                                 Icons.badge_outlined,
+//                                 color: Color(0xFF1B5E20),
+//                               ),
+//                               hintStyle: TextStyle(
+//                                 color: Colors.grey[400],
+//                                 fontSize: 14,
+//                               ),
+//                               border: OutlineInputBorder(
+//                                 borderRadius: BorderRadius.circular(12),
+//                                 borderSide: BorderSide(color: Colors.grey[300]!),
+//                               ),
+//                               enabledBorder: OutlineInputBorder(
+//                                 borderRadius: BorderRadius.circular(12),
+//                                 borderSide: BorderSide(color: Colors.grey[300]!),
+//                               ),
+//                               focusedBorder: OutlineInputBorder(
+//                                 borderRadius: BorderRadius.circular(12),
+//                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
+//                               ),
+//                             ),
+//                           ),
+//                           SizedBox(height: 20),
+//                           Text(
+//                             'Password',
+//                             style: GoogleFonts.raleway(
+//                               fontSize: 14,
+//                               fontWeight: FontWeight.w600,
+//                               color: Colors.grey[700],
+//                             ),
+//                           ),
+//                           SizedBox(height: 8),
+//                           TextField(
+//                             decoration: InputDecoration(
+//                               hintText: 'Enter your password',
+//                               prefixIcon: Icon(
+//                                 Icons.lock_outline,
+//                                 color: Color(0xFF1B5E20),
+//                               ),
+//                               suffixIcon: Icon(
+//                                 Icons.visibility_outlined,
+//                                 color: Colors.grey[400],
+//                               ),
+//                               hintStyle: TextStyle(
+//                                 color: Colors.grey[400],
+//                                 fontSize: 14,
+//                               ),
+//                               border: OutlineInputBorder(
+//                                 borderRadius: BorderRadius.circular(12),
+//                                 borderSide: BorderSide(color: Colors.grey[300]!),
+//                               ),
+//                               enabledBorder: OutlineInputBorder(
+//                                 borderRadius: BorderRadius.circular(12),
+//                                 borderSide: BorderSide(color: Colors.grey[300]!),
+//                               ),
+//                               focusedBorder: OutlineInputBorder(
+//                                 borderRadius: BorderRadius.circular(12),
+//                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
+//                               ),
+//                             ),
+//                             obscureText: true,
+//                           ),
+//                           SizedBox(height: 24),
+//                           SizedBox(
+//                             width: double.infinity,
+//                             child: ElevatedButton(
+//                               onPressed: () {
+//                                 // Handle admin login logic
+//                               },
+//                               style: ElevatedButton.styleFrom(
+//                                 backgroundColor: Color(0xFF1B5E20),
+//                                 foregroundColor: Colors.white,
+//                                 padding: EdgeInsets.symmetric(vertical: 16),
+//                                 shape: RoundedRectangleBorder(
+//                                   borderRadius: BorderRadius.circular(12),
+//                                 ),
+//                                 elevation: 0,
+//                               ),
+//                               child: Text(
+//                                 'Sign In',
+//                                 style: GoogleFonts.raleway(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.w600,
+//                                   letterSpacing: 1,
+//                                 ),
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+                    
+//                     // Additional Options Section
+//                     Padding(
+//                       padding: const EdgeInsets.symmetric(vertical: 16.0),
+//                       child: Row(
+//                         mainAxisAlignment: MainAxisAlignment.center,
+//                         children: [
+//                           TextButton.icon(
+//                             onPressed: () {
+//                               Navigator.pop(context);
+//                             },
+//                             icon: Icon(Icons.arrow_back_outlined, size: 18),
+//                             label: Text(
+//                               'Back to Selection',
+//                               style: GoogleFonts.raleway(
+//                                 fontWeight: FontWeight.w600,
+//                                 fontSize: 14,
+//                               ),
+//                             ),
+//                             style: TextButton.styleFrom(
+//                               foregroundColor: Color(0xFF1B5E20),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }

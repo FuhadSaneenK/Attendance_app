@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pro_1/screens/admin/student_part/add%20studentuser/add_timetable.dart';
 import 'package:pro_1/screens/admin/student_part/add%20studentuser/bulk_student_upload.dart';
 import 'package:pro_1/screens/admin/student_part/add%20studentuser/single_student_upload.dart';
 
@@ -30,6 +31,7 @@ class _StudentManagementPageState extends State<StudentManagementPage> {
   // Track visibility of each section
   bool _isViewStudentsSectionVisible = false;
   bool _isAddStudentsSectionVisible = false;
+  bool _isAddTimetableSectionVisible = false;
   
   // Track which add student tab is active
   int _selectedAddStudentTab = 0;
@@ -148,6 +150,45 @@ class _StudentManagementPageState extends State<StudentManagementPage> {
                       ],
                     ),
                   ),
+
+                SizedBox(height: 24),
+                Divider(color: Color(0xFF1B5E20), thickness: 1),
+                SizedBox(height: 24),
+                
+
+
+                _buildSectionButton(
+                  title: 'Add Timetable',
+                  isExpanded: _isAddTimetableSectionVisible,
+                  onPressed: () {
+                    setState(() {
+                      _isAddTimetableSectionVisible = !_isAddTimetableSectionVisible;
+                      if (_isAddTimetableSectionVisible) {
+                        _isViewStudentsSectionVisible = false;
+                        _isAddStudentsSectionVisible = false;
+                      }
+                    });
+                  },
+                ),
+
+                // Add Timetable Section (visible only when clicked)
+                if (_isAddTimetableSectionVisible) 
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TimetableForm(),
+                  ),
+
               ],
             ),
           ),
