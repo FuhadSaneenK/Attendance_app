@@ -126,7 +126,7 @@ class _TeacherManagementPageState extends State<TeacherManagementPage> {
                 ),
                 
                 // Add Teachers Section (visible only when clicked)
-                if (_isAddTeachersSectionVisible) AddTeacherPage(),
+                if (_isAddTeachersSectionVisible) TeacherApprovalPage(),
               ],
             ),
           ),

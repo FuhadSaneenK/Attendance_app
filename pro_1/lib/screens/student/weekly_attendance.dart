@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pro_1/screens/teacher/add%20attendance/attendance_service.dart';
 
 class WeeklyAttendancePage extends StatefulWidget {
   @override
@@ -19,14 +20,25 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
   String _batch = '';
   String _admissionNo = '';
   
+  // Semester details
+  DateTime? _semesterStartDate;
+  DateTime? _semesterEndDate;
+  List<String> _holidays = [];
+  String _semesterType = '';
+  
   // For timetable and attendance data
   Map<String, Map<String, String>> _timetableData = {};
   Map<String, Map<String, dynamic>> _attendanceData = {};
+  
+  // NEW: For subject-wise attendance data
+  List<Map<String, dynamic>> _subjectAttendance = [];
   
   // Loading states
   bool _isLoading = true;
   bool _isTimetableLoaded = false;
   bool _isAttendanceLoaded = false;
+  bool _isSemesterLoaded = false;
+  bool _isSubjectAttendanceLoaded = false;
   String _errorMessage = '';
 
   final List<String> _days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -38,6 +50,9 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
     '2:20 - 3:20',
     '3:25 - 4:25',
   ];
+
+  // Define color scheme
+  final Color primaryColor = Color(0xFF1B5E20);
 
   @override
   void initState() {
@@ -96,9 +111,15 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 
       print('User data loaded - Semester: $_semester, Batch: $_batch, AdmissionNo: $_admissionNo');
 
+      // Load semester details first
+      await _loadSemesterDetails();
+      
       // Now load timetable and attendance data
       await _loadTimetableData();
       await _loadAttendanceData();
+      
+      // NEW: Load subject-wise attendance data
+      await _loadSubjectAttendanceData();
       
     } catch (e) {
       setState(() {
@@ -106,6 +127,84 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
         _errorMessage = 'Error loading profile: ${e.toString()}';
       });
       print('Error loading user data: $e');
+    }
+  }
+
+  // Load current semester details
+  Future<void> _loadSemesterDetails() async {
+    try {
+      // Get current semester details
+      final semesterDoc = await FirebaseFirestore.instance
+          .collection('attendance')
+          .doc('current_semester')
+          .get();
+      
+      if (!semesterDoc.exists) {
+        setState(() {
+          _isSemesterLoaded = true;
+          _errorMessage = 'No current semester details found';
+        });
+        print('No current semester details found');
+        return;
+      }
+
+      final data = semesterDoc.data() as Map<String, dynamic>;
+      
+      // Parse semester details
+      final String startDateStr = data['start_date'] ?? '';
+      final String endDateStr = data['end_date'] ?? '';
+      final List<dynamic> holidaysRaw = data['holidays'] ?? [];
+      final String semesterType = data['semester'] ?? '';
+      
+      // Convert string dates to DateTime objects
+      DateTime? startDate;
+      DateTime? endDate;
+      
+      if (startDateStr.isNotEmpty) {
+        startDate = DateFormat('yyyy-MM-dd').parse(startDateStr);
+      }
+      
+      if (endDateStr.isNotEmpty) {
+        endDate = DateFormat('yyyy-MM-dd').parse(endDateStr);
+      }
+      
+      // Convert holidays to List<String>
+      List<String> holidays = holidaysRaw.map((h) => h.toString()).toList();
+      
+      setState(() {
+        _semesterStartDate = startDate;
+        _semesterEndDate = endDate;
+        _holidays = holidays;
+        _semesterType = semesterType;
+        _isSemesterLoaded = true;
+        
+        // Adjust the current week if it's outside the semester date range
+        if (_semesterStartDate != null && currentWeekStart.isBefore(_semesterStartDate!)) {
+          currentWeekStart = _semesterStartDate!;
+        }
+        
+        if (_semesterEndDate != null) {
+          // Ensure current week doesn't go beyond the semester end date
+          DateTime currentWeekEnd = currentWeekStart.add(Duration(days: 6));
+          if (currentWeekEnd.isAfter(_semesterEndDate!)) {
+            // Adjust to the last week of the semester
+            currentWeekStart = _semesterEndDate!.subtract(Duration(days: _semesterEndDate!.weekday + 6));
+            if (currentWeekStart.isBefore(_semesterStartDate!)) {
+              currentWeekStart = _semesterStartDate!;
+            }
+          }
+        }
+      });
+      
+      print('Semester details loaded - Start: $_semesterStartDate, End: $_semesterEndDate');
+      print('Holidays: $_holidays');
+      
+    } catch (e) {
+      setState(() {
+        _isSemesterLoaded = true;
+        _errorMessage = 'Error loading semester details: ${e.toString()}';
+      });
+      print('Error loading semester details: $e');
     }
   }
 
@@ -151,7 +250,7 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
       setState(() {
         _timetableData = timetable;
         _isTimetableLoaded = true;
-        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
+        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded && _isSubjectAttendanceLoaded);
       });
       
       print('Timetable loaded successfully');
@@ -159,10 +258,46 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
     } catch (e) {
       setState(() {
         _isTimetableLoaded = true;
-        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
+        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded && _isSubjectAttendanceLoaded);
         _errorMessage = 'Error loading timetable: ${e.toString()}';
       });
       print('Error loading timetable: $e');
+    }
+  }
+
+  // NEW: Load subject-wise attendance data
+  Future<void> _loadSubjectAttendanceData() async {
+    if (_semester.isEmpty || _admissionNo.isEmpty) {
+      setState(() {
+        _isSubjectAttendanceLoaded = true;
+        _errorMessage = 'Incomplete student information';
+      });
+      return;
+    }
+
+    try {
+      print('Loading subject-wise attendance data for student: $_admissionNo');
+      
+      List<Map<String, dynamic>> subjectAttendance = await AttendanceService.getStudentSubjectAttendance(
+        classId: 'Sem$_semester',
+        studentId: _admissionNo,
+      );
+      
+      setState(() {
+        _subjectAttendance = subjectAttendance;
+        _isSubjectAttendanceLoaded = true;
+        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded && _isSubjectAttendanceLoaded);
+      });
+      
+      print('Subject attendance loaded successfully: $_subjectAttendance');
+      
+    } catch (e) {
+      setState(() {
+        _isSubjectAttendanceLoaded = true;
+        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded && _isSubjectAttendanceLoaded);
+        _errorMessage = 'Error loading subject attendance: ${e.toString()}';
+      });
+      print('Error loading subject attendance: $e');
     }
   }
 
@@ -203,78 +338,82 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
           List<bool?> periodStatus = List<bool?>.filled(_timeSlots.length, null);
           attendanceData[formattedDate] = {
             'day': dayName,
-            'periods': periodStatus
+            'periods': periodStatus,
+            'isHoliday': _holidays.contains(formattedDate) // Mark if it's a holiday
           };
           
-          // Check all documents for this date
-          try {
-            print('Listing all documents for date $formattedDate:');
-            QuerySnapshot dateDocs = await FirebaseFirestore.instance
-                .collection('attendance')
-                .doc('Sem$_semester')
-                .collection(formattedDate)
-                .get();
-            
-            if (dateDocs.docs.isEmpty) {
-              print('No documents found for Sem$_semester/$formattedDate');
-            } else {
-              print('Found ${dateDocs.docs.length} documents for Sem$_semester/$formattedDate:');
-              for (var doc in dateDocs.docs) {
-                print('- ${doc.id}');
+          // If it's not a holiday, check attendance data
+          if (!_holidays.contains(formattedDate)) {
+            // Check all documents for this date
+            try {
+              print('Listing all documents for date $formattedDate:');
+              QuerySnapshot dateDocs = await FirebaseFirestore.instance
+                  .collection('attendance')
+                  .doc('Sem$_semester')
+                  .collection(formattedDate)
+                  .get();
+              
+              if (dateDocs.docs.isEmpty) {
+                print('No documents found for Sem$_semester/$formattedDate');
+              } else {
+                print('Found ${dateDocs.docs.length} documents for Sem$_semester/$formattedDate:');
+                for (var doc in dateDocs.docs) {
+                  print('- ${doc.id}');
+                }
               }
+            } catch (e) {
+              print('Error listing date documents: $e');
             }
-          } catch (e) {
-            print('Error listing date documents: $e');
-          }
-          
-          // For each period, check if there's attendance data
-          for (int periodIndex = 0; periodIndex < _timeSlots.length; periodIndex++) {
-            String timeSlot = _timeSlots[periodIndex];
-            String subject = _timetableData[dayName]?[timeSlot] ?? '';
             
-            if (subject.isNotEmpty) {
-              print('\nChecking period: $timeSlot, Subject: $subject');
+            // For each period, check if there's attendance data
+            for (int periodIndex = 0; periodIndex < _timeSlots.length; periodIndex++) {
+              String timeSlot = _timeSlots[periodIndex];
+              String subject = _timetableData[dayName]?[timeSlot] ?? '';
               
-              // Try with the exact format from Firebase
-              String docId = '$timeSlot\_$subject';
-              print('Trying document ID: $docId');
-              
-              try {
-                DocumentSnapshot attendanceDoc = await FirebaseFirestore.instance
-                    .collection('attendance')
-                    .doc('Sem$_semester')
-                    .collection(formattedDate)
-                    .doc(docId)
-                    .get();
+              if (subject.isNotEmpty) {
+                print('\nChecking period: $timeSlot, Subject: $subject');
+                
+                // Try with the exact format from Firebase
+                String docId = '$timeSlot\_$subject';
+                print('Trying document ID: $docId');
+                
+                try {
+                  DocumentSnapshot attendanceDoc = await FirebaseFirestore.instance
+                      .collection('attendance')
+                      .doc('Sem$_semester')
+                      .collection(formattedDate)
+                      .doc(docId)
+                      .get();
+                      
+                  if (attendanceDoc.exists) {
+                    print('SUCCESS! Found document with ID: $docId');
                     
-                if (attendanceDoc.exists) {
-                  print('SUCCESS! Found document with ID: $docId');
-                  
-                  final data = attendanceDoc.data() as Map<String, dynamic>;
-                  
-                  // Check if the document contains students data
-                  if (data.containsKey('students') && data['students'] is List) {
-                    final List<dynamic> students = data['students'] as List<dynamic>;
+                    final data = attendanceDoc.data() as Map<String, dynamic>;
                     
-                    for (var student in students) {
-                      if (student is Map && 
-                          student.containsKey('studentId') && 
-                          student['studentId'] == _admissionNo) {
-                        
-                        bool isPresent = student['isPresent'];
-                        print('Found attendance for student $_admissionNo: $isPresent');
-                        
-                        // Update the list with the boolean value
-                        attendanceData[formattedDate]!['periods'][periodIndex] = isPresent;
-                        break;
+                    // Check if the document contains students data
+                    if (data.containsKey('students') && data['students'] is List) {
+                      final List<dynamic> students = data['students'] as List<dynamic>;
+                      
+                      for (var student in students) {
+                        if (student is Map && 
+                            student.containsKey('studentId') && 
+                            student['studentId'] == _admissionNo) {
+                          
+                          bool isPresent = student['isPresent'];
+                          print('Found attendance for student $_admissionNo: $isPresent');
+                          
+                          // Update the list with the boolean value
+                          attendanceData[formattedDate]!['periods'][periodIndex] = isPresent;
+                          break;
+                        }
                       }
                     }
+                  } else {
+                    print('No attendance document found for $docId');
                   }
-                } else {
-                  print('No attendance document found for $docId');
+                } catch (e) {
+                  print('Error checking document: $e');
                 }
-              } catch (e) {
-                print('Error checking document: $e');
               }
             }
           }
@@ -284,7 +423,7 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
       setState(() {
         _attendanceData = attendanceData;
         _isAttendanceLoaded = true;
-        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
+        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded && _isSubjectAttendanceLoaded);
       });
       
       print('Final attendance data: $_attendanceData');
@@ -293,7 +432,7 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
     } catch (e) {
       setState(() {
         _isAttendanceLoaded = true;
-        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
+        _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded && _isSubjectAttendanceLoaded);
         _errorMessage = 'Error loading attendance: ${e.toString()}';
       });
       print('Error loading attendance: $e');
@@ -302,27 +441,77 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 
   // Navigate to previous week
   void _goToPreviousWeek() {
-    setState(() {
-      currentWeekStart = currentWeekStart.subtract(Duration(days: 7));
-      _isAttendanceLoaded = false;
-      _loadAttendanceData();
-    });
-  }
-
-  // Navigate to next week
-  void _goToNextWeek() {
-    final now = DateTime.now();
-    if (currentWeekStart.isBefore(now)) {
+    // Check if the previous week would be before the semester start date
+    DateTime previousWeekStart = currentWeekStart.subtract(Duration(days: 7));
+    
+    if (_semesterStartDate != null && previousWeekStart.isBefore(_semesterStartDate!)) {
+      // Set to semester start date
       setState(() {
-        currentWeekStart = currentWeekStart.add(Duration(days: 7));
+        currentWeekStart = _semesterStartDate!;
+        _isAttendanceLoaded = false;
+        _loadAttendanceData();
+      });
+    } else {
+      setState(() {
+        currentWeekStart = previousWeekStart;
         _isAttendanceLoaded = false;
         _loadAttendanceData();
       });
     }
   }
 
+  // Navigate to next week
+  void _goToNextWeek() {
+    // Calculate the end of the current week
+    DateTime nextWeekStart = currentWeekStart.add(Duration(days: 7));
+    DateTime currentWeekEnd = nextWeekStart.add(Duration(days: 4)); // Friday of next week
+    
+    // Check if the next week would be after the semester end date
+    if (_semesterEndDate != null && currentWeekEnd.isAfter(_semesterEndDate!)) {
+      // Don't allow moving past the semester end date
+      return;
+    }
+    
+    setState(() {
+      currentWeekStart = nextWeekStart;
+      _isAttendanceLoaded = false;
+      _loadAttendanceData();
+    });
+  }
+
   // Build attendance cell
   Widget _buildAttendanceCell(String dateKey, String day, int periodIndex) {
+    // Check if this date is a holiday
+    bool isHoliday = _attendanceData[dateKey]?['isHoliday'] ?? false;
+    
+    if (isHoliday) {
+      // Return a holiday cell
+      return Container(
+        color: Colors.amber[100],
+        padding: EdgeInsets.all(4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.event_busy,
+              color: Colors.amber[800],
+              size: 20,
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Holiday',
+              style: GoogleFonts.raleway(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber[800],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
     // Get the time slot for this period
     String timeSlot = periodIndex < _timeSlots.length ? _timeSlots[periodIndex] : '';
     
@@ -419,8 +608,90 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
     );
   }
 
+  // NEW: Build subject attendance card
+  Widget _buildSubjectCard(Map<String, dynamic> subjectData) {
+    final String subject = subjectData['subject'] ?? 'Unknown';
+    final int markedPeriods = subjectData['markedPeriods'] ?? 0;
+    final int presentPeriods = subjectData['presentPeriods'] ?? 0;
+    final String percentage = subjectData['percentage'] ?? '0.0';
+    
+    // Determine color based on percentage
+    Color progressColor;
+    if (double.parse(percentage) >= 75) {
+      progressColor = Colors.green;
+    } else if (double.parse(percentage) >= 60) {
+      progressColor = Colors.orange;
+    } else {
+      progressColor = Colors.red;
+    }
+    
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              subject,
+              style: GoogleFonts.raleway(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: markedPeriods > 0 ? presentPeriods / markedPeriods : 0,
+                    backgroundColor: Colors.grey[200],
+                    color: progressColor,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '$percentage%',
+                  style: GoogleFonts.raleway(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: progressColor,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Present: $presentPeriods/$markedPeriods classes',
+              style: GoogleFonts.raleway(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Format semester date range for display
+    String semesterDateRange = '';
+    if (_semesterStartDate != null && _semesterEndDate != null) {
+      semesterDateRange = '${DateFormat('MMM d, yyyy').format(_semesterStartDate!)} - '
+                         '${DateFormat('MMM d, yyyy').format(_semesterEndDate!)}';
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -496,26 +767,54 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
                     ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
                         children: [
-                          Text(
-                            'Semester $_semester',
-                            style: GoogleFonts.raleway(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1B5E20),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Semester $_semester',
+                                style: GoogleFonts.raleway(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Text(
+                                'Batch $_batch',
+                                style: GoogleFonts.raleway(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 16),
-                          Text(
-                            'Batch $_batch',
-                            style: GoogleFonts.raleway(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1B5E20),
+                          // Show semester type and date range
+                          if (_semesterType.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                _semesterType,
+                                style: GoogleFonts.raleway(
+                                  fontSize: 14,
+                                  fontStyle: FontStyle.italic,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ),
                             ),
-                          ),
+                          if (semesterDateRange.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                semesterDateRange,
+                                style: GoogleFonts.raleway(
+                                  fontSize: 14,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -560,8 +859,10 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
                             onPressed: () {
                               setState(() {
                                 _isAttendanceLoaded = false;
+                                _isSubjectAttendanceLoaded = false;
                               });
                               _loadAttendanceData();
+                              _loadSubjectAttendanceData();
                             },
                             icon: Icon(Icons.refresh, size: 16, color: Color(0xFF1B5E20)),
                             label: Text(
@@ -579,99 +880,183 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
                       child: SingleChildScrollView(
                         child: Padding(
                           padding: EdgeInsets.all(16),
-                          child: Table(
-                            border: TableBorder.all(
-                              color: Colors.grey[300]!,
-                              width: 1,
-                            ),
-                            columnWidths: const {
-                              0: FlexColumnWidth(0.8),
-                              1: FlexColumnWidth(1),
-                              2: FlexColumnWidth(1),
-                              3: FlexColumnWidth(1),
-                              4: FlexColumnWidth(1),
-                              5: FlexColumnWidth(1),
-                              6: FlexColumnWidth(1),
-                            },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              TableRow(
+                              // Weekly attendance table
+                                Table(
+                                border: TableBorder.all(
+                                  color: Colors.grey[300]!,
+                                  width: 1,
+                                ),
+                                columnWidths: const {
+                                  0: FlexColumnWidth(0.8),
+                                  1: FlexColumnWidth(1),
+                                  2: FlexColumnWidth(1),
+                                  3: FlexColumnWidth(1),
+                                  4: FlexColumnWidth(1),
+                                  5: FlexColumnWidth(1),
+                                  6: FlexColumnWidth(1),
+                                },
+                                children: [
+                                  TableRow(
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF1B5E20).withOpacity(0.1),
+                                    ),
+                                    children: [
+                                      TableCell(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(8),
+                                          child: Text(
+                                            'Day',
+                                            style: GoogleFonts.raleway(fontWeight: FontWeight.bold),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      ...List.generate(6, (index) {
+                                        return TableCell(
+                                          child: Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Text(
+                                              'Period ${index + 1}',
+                                              style: GoogleFonts.raleway(fontWeight: FontWeight.bold),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                  ..._days.map((day) {
+                                    int dayIndex = _days.indexOf(day);
+                                    DateTime currentDate = currentWeekStart.add(
+                                      Duration(days: dayIndex)
+                                    );
+                                    String dateKey = DateFormat('yyyy-MM-dd').format(currentDate);
+                                    
+                                    return TableRow(
+                                      children: [
+                                        TableCell(
+                                          child: Container(
+                                            padding: EdgeInsets.all(8),
+                                            child: Text(
+                                              day.substring(0, 3),
+                                              style: GoogleFonts.raleway(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                        ...List.generate(6, (periodIndex) {
+                                          return TableCell(
+                                            child: SizedBox(
+                                              height: 70, // Increased height for better visibility
+                                              child: _buildAttendanceCell(dateKey, day, periodIndex),
+                                            ),
+                                          );
+                                        }),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                              
+                              // Legend for attendance status
+                              Container(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildLegendItem('Present', Colors.green[100]!, Colors.green[800]!, '✓'),
+                                    SizedBox(width: 16),
+                                    _buildLegendItem('Absent', Colors.red[100]!, Colors.red[800]!, '✗'),
+                                    SizedBox(width: 16),
+                                    _buildLegendItem('No Data', Colors.grey[200]!, Colors.grey[600]!, '-'),
+                                    SizedBox(width: 16),
+                                    _buildLegendItem('Holiday', Colors.amber[100]!, Colors.amber[800]!, 'H'),
+                                  ],
+                                ),
+                              ),
+                              
+                              // NEW: Subject-wise attendance section
+                              SizedBox(height: 24),
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: Color(0xFF1B5E20).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                children: [
-                                  TableCell(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.subject, color: Color(0xFF1B5E20)),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Subject-Wise Attendance',
+                                          style: GoogleFonts.raleway(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF1B5E20),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      'Minimum required attendance: 75%',
+                                      style: GoogleFonts.raleway(
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
+                                        color: Color(0xFF1B5E20),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              
+                              // Subject cards
+                              _isSubjectAttendanceLoaded
+                                ? _subjectAttendance.isEmpty
+                                  ? Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Text(
+                                          'No subject attendance data available',
+                                          style: GoogleFonts.raleway(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      physics: NeverScrollableScrollPhysics(),
+                                      shrinkWrap: true,
+                                      itemCount: _subjectAttendance.length,
+                                      separatorBuilder: (context, index) => SizedBox(height: 8),
+                                      itemBuilder: (context, index) {
+                                        return _buildSubjectCard(_subjectAttendance[index]);
+                                      },
+                                    )
+                                : Center(
                                     child: Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: Text(
-                                        'Day',
-                                        style: GoogleFonts.raleway(fontWeight: FontWeight.bold),
-                                        textAlign: TextAlign.center,
+                                      padding: EdgeInsets.all(24),
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFF1B5E20),
+                                        strokeWidth: 2,
                                       ),
                                     ),
                                   ),
-                                  ...List.generate(6, (index) {
-                                    return TableCell(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(8),
-                                        child: Text(
-                                          'Period ${index + 1}',
-                                          style: GoogleFonts.raleway(fontWeight: FontWeight.bold),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                              ..._days.map((day) {
-                                int dayIndex = _days.indexOf(day);
-                                DateTime currentDate = currentWeekStart.add(
-                                  Duration(days: dayIndex)
-                                );
-                                String dateKey = DateFormat('yyyy-MM-dd').format(currentDate);
-                                
-                                return TableRow(
-                                  children: [
-                                    TableCell(
-                                      child: Container(
-                                        padding: EdgeInsets.all(8),
-                                        child: Text(
-                                          day.substring(0, 3),
-                                          style: GoogleFonts.raleway(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ),
-                                    ...List.generate(6, (periodIndex) {
-                                      return TableCell(
-                                        child: SizedBox(
-                                          height: 70, // Increased height for better visibility
-                                          child: _buildAttendanceCell(dateKey, day, periodIndex),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                );
-                              }).toList(),
+                              SizedBox(height: 24),
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildLegendItem('Present', Colors.green[100]!, Colors.green[800]!, '✓'),
-                          SizedBox(width: 16),
-                          _buildLegendItem('Absent', Colors.red[100]!, Colors.red[800]!, '✗'),
-                          SizedBox(width: 16),
-                          _buildLegendItem('No Data', Colors.grey[200]!, Colors.grey[600]!, '-'),
-                        ],
                       ),
                     ),
                   ],
@@ -717,8 +1102,19 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 }
 
 
-// working connection successfully 
-//import 'package:flutter/material.dart';
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
 // import 'package:google_fonts/google_fonts.dart';
 // import 'package:intl/intl.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
@@ -731,13 +1127,19 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 
 // class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //   DateTime currentWeekStart = DateTime.now().subtract(
-//     Duration(days: DateTime.now().weekday - 1)
+//     Duration(days: DateTime.now().weekday - 1),
 //   );
   
 //   // Student data
 //   String _semester = '';
 //   String _batch = '';
 //   String _admissionNo = '';
+  
+//   // Semester details
+//   DateTime? _semesterStartDate;
+//   DateTime? _semesterEndDate;
+//   List<String> _holidays = [];
+//   String _semesterType = '';
   
 //   // For timetable and attendance data
 //   Map<String, Map<String, String>> _timetableData = {};
@@ -747,6 +1149,7 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //   bool _isLoading = true;
 //   bool _isTimetableLoaded = false;
 //   bool _isAttendanceLoaded = false;
+//   bool _isSemesterLoaded = false;
 //   String _errorMessage = '';
 
 //   final List<String> _days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -802,7 +1205,9 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
       
 //       // Get the semester and batch from user data
 //       final dynamic semesterRaw = userData['semester'];
-//       final String semester = semesterRaw is int ? semesterRaw.toString() : (semesterRaw ?? '');
+//       final String semester = semesterRaw is int 
+//           ? semesterRaw.toString() 
+//           : (semesterRaw ?? '');
 //       final String batch = userData['batch'] ?? '';
 //       final String admissionNo = userData['admissionNo'] ?? '';
       
@@ -814,6 +1219,9 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 
 //       print('User data loaded - Semester: $_semester, Batch: $_batch, AdmissionNo: $_admissionNo');
 
+//       // Load semester details first
+//       await _loadSemesterDetails();
+      
 //       // Now load timetable and attendance data
 //       await _loadTimetableData();
 //       await _loadAttendanceData();
@@ -824,6 +1232,84 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //         _errorMessage = 'Error loading profile: ${e.toString()}';
 //       });
 //       print('Error loading user data: $e');
+//     }
+//   }
+
+//   // Load current semester details
+//   Future<void> _loadSemesterDetails() async {
+//     try {
+//       // Get current semester details
+//       final semesterDoc = await FirebaseFirestore.instance
+//           .collection('attendance')
+//           .doc('current_semester')
+//           .get();
+      
+//       if (!semesterDoc.exists) {
+//         setState(() {
+//           _isSemesterLoaded = true;
+//           _errorMessage = 'No current semester details found';
+//         });
+//         print('No current semester details found');
+//         return;
+//       }
+
+//       final data = semesterDoc.data() as Map<String, dynamic>;
+      
+//       // Parse semester details
+//       final String startDateStr = data['start_date'] ?? '';
+//       final String endDateStr = data['end_date'] ?? '';
+//       final List<dynamic> holidaysRaw = data['holidays'] ?? [];
+//       final String semesterType = data['semester'] ?? '';
+      
+//       // Convert string dates to DateTime objects
+//       DateTime? startDate;
+//       DateTime? endDate;
+      
+//       if (startDateStr.isNotEmpty) {
+//         startDate = DateFormat('yyyy-MM-dd').parse(startDateStr);
+//       }
+      
+//       if (endDateStr.isNotEmpty) {
+//         endDate = DateFormat('yyyy-MM-dd').parse(endDateStr);
+//       }
+      
+//       // Convert holidays to List<String>
+//       List<String> holidays = holidaysRaw.map((h) => h.toString()).toList();
+      
+//       setState(() {
+//         _semesterStartDate = startDate;
+//         _semesterEndDate = endDate;
+//         _holidays = holidays;
+//         _semesterType = semesterType;
+//         _isSemesterLoaded = true;
+        
+//         // Adjust the current week if it's outside the semester date range
+//         if (_semesterStartDate != null && currentWeekStart.isBefore(_semesterStartDate!)) {
+//           currentWeekStart = _semesterStartDate!;
+//         }
+        
+//         if (_semesterEndDate != null) {
+//           // Ensure current week doesn't go beyond the semester end date
+//           DateTime currentWeekEnd = currentWeekStart.add(Duration(days: 6));
+//           if (currentWeekEnd.isAfter(_semesterEndDate!)) {
+//             // Adjust to the last week of the semester
+//             currentWeekStart = _semesterEndDate!.subtract(Duration(days: _semesterEndDate!.weekday + 6));
+//             if (currentWeekStart.isBefore(_semesterStartDate!)) {
+//               currentWeekStart = _semesterStartDate!;
+//             }
+//           }
+//         }
+//       });
+      
+//       print('Semester details loaded - Start: $_semesterStartDate, End: $_semesterEndDate');
+//       print('Holidays: $_holidays');
+      
+//     } catch (e) {
+//       setState(() {
+//         _isSemesterLoaded = true;
+//         _errorMessage = 'Error loading semester details: ${e.toString()}';
+//       });
+//       print('Error loading semester details: $e');
 //     }
 //   }
 
@@ -869,7 +1355,7 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //       setState(() {
 //         _timetableData = timetable;
 //         _isTimetableLoaded = true;
-//         _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
+//         _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded);
 //       });
       
 //       print('Timetable loaded successfully');
@@ -877,257 +1363,224 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //     } catch (e) {
 //       setState(() {
 //         _isTimetableLoaded = true;
-//         _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
+//         _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded);
 //         _errorMessage = 'Error loading timetable: ${e.toString()}';
 //       });
 //       print('Error loading timetable: $e');
 //     }
 //   }
 
-//   // Enhanced debugging method to explore Firestore structure
-//   Future<void> _debugFirestoreStructure() async {
-//     print('=========== STARTING DEEP FIRESTORE DEBUGGING ===========');
+//   Future<void> _loadAttendanceData() async {
+//     if (_semester.isEmpty || _batch.isEmpty || _admissionNo.isEmpty) {
+//       setState(() {
+//         _isAttendanceLoaded = true;
+//         _errorMessage = 'Incomplete student information';
+//       });
+//       print('Incomplete student information. Cannot load attendance.');
+//       return;
+//     }
 
 //     try {
-//       // First, check the attendance collection
-//       print('Checking all documents in attendance collection...');
-//       QuerySnapshot attendanceSnapshot = await FirebaseFirestore.instance
-//           .collection('attendance')
-//           .get();
-
-//       print('Found ${attendanceSnapshot.docs.length} documents in attendance collection:');
-//       for (var doc in attendanceSnapshot.docs) {
-//         print('- ${doc.id}');
-
-//         // For each semester document, check its collections
-//         try {
-//           QuerySnapshot collections = await FirebaseFirestore.instance
-//               .collection('attendance')
-//               .doc(doc.id)
-//               .collection('2025-03-19') // Use a specific date we're trying to find
-//               .get();
-
-//           print('  Found ${collections.docs.length} documents in ${doc.id}/2025-03-19:');
-//           for (var dateDoc in collections.docs) {
-//             print('  - ${dateDoc.id}');
-            
-//             // Print the actual document data
-//             Map<String, dynamic> data = dateDoc.data() as Map<String, dynamic>;
-//             print('    Document data: $data');
-
-//             // Check if this document has your student's data
-//             if (data.containsKey('students') && data['students'] is List) {
-//               for (var student in data['students']) {
-//                 if (student['studentId'] == _admissionNo) {
-//                   print('    *** FOUND YOUR STUDENT: ${student['studentId']} with isPresent=${student['isPresent']}');
-//                 }
-//               }
-//             }
-//           }
-//         } catch (e) {
-//           print('  Error listing collections for ${doc.id}: $e');
-//         }
-//       }
-
-//       // Also check original exact path we're trying to access
-//       print('\nChecking exact document path we need:');
-//       try {
-//         DocumentSnapshot specificDoc = await FirebaseFirestore.instance
-//             .collection('attendance')
-//             .doc('Sem$_semester')
-//             .collection('2025-03-19')
-//             .doc('10:05 - 11:05_pro')
-//             .get();
-
-//         print('Document exists at attendance/Sem$_semester/2025-03-19/10:05 - 11:05_pro: ${specificDoc.exists}');
-//         if (specificDoc.exists) {
-//           print('Document data: ${specificDoc.data()}');
-//         }
-//       } catch (e) {
-//         print('Error checking exact path: $e');
-//       }
-
-//       // Try checking without 'Sem' prefix
-//       try {
-//         DocumentSnapshot altDoc = await FirebaseFirestore.instance
-//             .collection('attendance')
-//             .doc(_semester)
-//             .collection('2025-03-19')
-//             .doc('10:05 - 11:05_pro')
-//             .get();
-
-//         print('Document exists at attendance/$_semester/2025-03-19/10:05 - 11:05_pro: ${altDoc.exists}');
-//         if (altDoc.exists) {
-//           print('Document data: ${altDoc.data()}');
-//         }
-//       } catch (e) {
-//         print('Error checking alternative path: $e');
-//       }
-
-//       print('=========== ENDING DEEP FIRESTORE DEBUGGING ===========');
-//     } catch (e) {
-//       print('Error during deep debugging: $e');
-//     }
-//   }
-
-// Future<void> _loadAttendanceData() async {
-//   if (_semester.isEmpty || _batch.isEmpty || _admissionNo.isEmpty) {
-//     setState(() {
-//       _isAttendanceLoaded = true;
-//       _errorMessage = 'Incomplete student information';
-//     });
-//     print('Incomplete student information. Cannot load attendance.');
-//     return;
-//   }
-
-//   try {
-//     print('=========== STARTING ATTENDANCE LOADING ===========');
-//     print('Loading attendance data for student: $_admissionNo');
-//     print('Current semester: $_semester, batch: $_batch');
-    
-//     // Get the current week's dates
-//     List<DateTime> weekDates = List.generate(
-//       5, 
-//       (index) => currentWeekStart.add(Duration(days: index))
-//     );
-    
-//     print('Week dates to check: ${weekDates.map((d) => DateFormat('yyyy-MM-dd').format(d)).join(', ')}');
-    
-//     Map<String, Map<String, dynamic>> attendanceData = {};
-    
-//     // For each date in the week
-//     for (DateTime date in weekDates) {
-//       String formattedDate = DateFormat('yyyy-MM-dd').format(date);
-//       String dayName = DateFormat('EEEE').format(date);
+//       print('=========== STARTING ATTENDANCE LOADING ===========');
+//       print('Loading attendance data for student: $_admissionNo');
+//       print('Current semester: $_semester, batch: $_batch');
       
-//       print('\nProcessing date: $formattedDate ($dayName)');
+//       // Get the current week's dates
+//       List<DateTime> weekDates = List.generate(
+//         5, 
+//         (index) => currentWeekStart.add(Duration(days: index))
+//       );
       
-//       if (_days.contains(dayName)) {
-//         // Create an entry for this date with all periods initially set to null
-//         // Use an array of bool? (nullable booleans) instead of dynamic
-//         List<bool?> periodStatus = List<bool?>.filled(_timeSlots.length, null);
-//         attendanceData[formattedDate] = {
-//           'day': dayName,
-//           'periods': periodStatus
-//         };
+//       print('Week dates to check: ${weekDates.map((d) => DateFormat('yyyy-MM-dd').format(d)).join(', ')}');
+      
+//       Map<String, Map<String, dynamic>> attendanceData = {};
+      
+//       // For each date in the week
+//       for (DateTime date in weekDates) {
+//         String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+//         String dayName = DateFormat('EEEE').format(date);
         
-//         // Check all documents for this date
-//         try {
-//           print('Listing all documents for date $formattedDate:');
-//           QuerySnapshot dateDocs = await FirebaseFirestore.instance
-//               .collection('attendance')
-//               .doc('Sem$_semester')
-//               .collection(formattedDate)
-//               .get();
-          
-//           if (dateDocs.docs.isEmpty) {
-//             print('No documents found for Sem$_semester/$formattedDate');
-//           } else {
-//             print('Found ${dateDocs.docs.length} documents for Sem$_semester/$formattedDate:');
-//             for (var doc in dateDocs.docs) {
-//               print('- ${doc.id}');
-//             }
-//           }
-//         } catch (e) {
-//           print('Error listing date documents: $e');
-//         }
+//         print('\nProcessing date: $formattedDate ($dayName)');
         
-//         // For each period, check if there's attendance data
-//         for (int periodIndex = 0; periodIndex < _timeSlots.length; periodIndex++) {
-//           String timeSlot = _timeSlots[periodIndex];
-//           String subject = _timetableData[dayName]?[timeSlot] ?? '';
+//         if (_days.contains(dayName)) {
+//           // Create an entry for this date with all periods initially set to null
+//           List<bool?> periodStatus = List<bool?>.filled(_timeSlots.length, null);
+//           attendanceData[formattedDate] = {
+//             'day': dayName,
+//             'periods': periodStatus,
+//             'isHoliday': _holidays.contains(formattedDate) // Mark if it's a holiday
+//           };
           
-//           if (subject.isNotEmpty) {
-//             print('\nChecking period: $timeSlot, Subject: $subject');
-            
-//             // Try with the exact format from Firebase
-//             String docId = '$timeSlot\_$subject';
-//             print('Trying document ID: $docId');
-            
+//           // If it's not a holiday, check attendance data
+//           if (!_holidays.contains(formattedDate)) {
+//             // Check all documents for this date
 //             try {
-//               DocumentSnapshot attendanceDoc = await FirebaseFirestore.instance
+//               print('Listing all documents for date $formattedDate:');
+//               QuerySnapshot dateDocs = await FirebaseFirestore.instance
 //                   .collection('attendance')
 //                   .doc('Sem$_semester')
 //                   .collection(formattedDate)
-//                   .doc(docId)
 //                   .get();
-                  
-//               if (attendanceDoc.exists) {
-//                 print('SUCCESS! Found document with ID: $docId');
-                
-//                 final data = attendanceDoc.data() as Map<String, dynamic>;
-                
-//                 // Check if the document contains students data
-//                 if (data.containsKey('students') && data['students'] is List) {
-//                   final List<dynamic> students = data['students'] as List<dynamic>;
-                  
-//                   for (var student in students) {
-//                     if (student is Map && 
-//                         student.containsKey('studentId') && 
-//                         student['studentId'] == _admissionNo) {
-                      
-//                       bool isPresent = student['isPresent'];
-//                       print('Found attendance for student $_admissionNo: $isPresent');
-                      
-//                       // FIXED: directly update the list with the boolean value
-//                       attendanceData[formattedDate]!['periods'][periodIndex] = isPresent;
-//                       break;
-//                     }
-//                   }
-//                 }
+              
+//               if (dateDocs.docs.isEmpty) {
+//                 print('No documents found for Sem$_semester/$formattedDate');
 //               } else {
-//                 print('No attendance document found for $docId');
+//                 print('Found ${dateDocs.docs.length} documents for Sem$_semester/$formattedDate:');
+//                 for (var doc in dateDocs.docs) {
+//                   print('- ${doc.id}');
+//                 }
 //               }
 //             } catch (e) {
-//               print('Error checking document: $e');
+//               print('Error listing date documents: $e');
+//             }
+            
+//             // For each period, check if there's attendance data
+//             for (int periodIndex = 0; periodIndex < _timeSlots.length; periodIndex++) {
+//               String timeSlot = _timeSlots[periodIndex];
+//               String subject = _timetableData[dayName]?[timeSlot] ?? '';
+              
+//               if (subject.isNotEmpty) {
+//                 print('\nChecking period: $timeSlot, Subject: $subject');
+                
+//                 // Try with the exact format from Firebase
+//                 String docId = '$timeSlot\_$subject';
+//                 print('Trying document ID: $docId');
+                
+//                 try {
+//                   DocumentSnapshot attendanceDoc = await FirebaseFirestore.instance
+//                       .collection('attendance')
+//                       .doc('Sem$_semester')
+//                       .collection(formattedDate)
+//                       .doc(docId)
+//                       .get();
+                      
+//                   if (attendanceDoc.exists) {
+//                     print('SUCCESS! Found document with ID: $docId');
+                    
+//                     final data = attendanceDoc.data() as Map<String, dynamic>;
+                    
+//                     // Check if the document contains students data
+//                     if (data.containsKey('students') && data['students'] is List) {
+//                       final List<dynamic> students = data['students'] as List<dynamic>;
+                      
+//                       for (var student in students) {
+//                         if (student is Map && 
+//                             student.containsKey('studentId') && 
+//                             student['studentId'] == _admissionNo) {
+                          
+//                           bool isPresent = student['isPresent'];
+//                           print('Found attendance for student $_admissionNo: $isPresent');
+                          
+//                           // Update the list with the boolean value
+//                           attendanceData[formattedDate]!['periods'][periodIndex] = isPresent;
+//                           break;
+//                         }
+//                       }
+//                     }
+//                   } else {
+//                     print('No attendance document found for $docId');
+//                   }
+//                 } catch (e) {
+//                   print('Error checking document: $e');
+//                 }
+//               }
 //             }
 //           }
 //         }
 //       }
+      
+//       setState(() {
+//         _attendanceData = attendanceData;
+//         _isAttendanceLoaded = true;
+//         _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded);
+//       });
+      
+//       print('Final attendance data: $_attendanceData');
+//       print('=========== FINISHED ATTENDANCE LOADING ===========');
+      
+//     } catch (e) {
+//       setState(() {
+//         _isAttendanceLoaded = true;
+//         _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded && _isSemesterLoaded);
+//         _errorMessage = 'Error loading attendance: ${e.toString()}';
+//       });
+//       print('Error loading attendance: $e');
 //     }
-    
-//     setState(() {
-//       _attendanceData = attendanceData;
-//       _isAttendanceLoaded = true;
-//       _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
-//     });
-    
-//     print('Final attendance data: $_attendanceData');
-//     print('=========== FINISHED ATTENDANCE LOADING ===========');
-    
-//   } catch (e) {
-//     setState(() {
-//       _isAttendanceLoaded = true;
-//       _isLoading = !(_isTimetableLoaded && _isAttendanceLoaded);
-//       _errorMessage = 'Error loading attendance: ${e.toString()}';
-//     });
-//     print('Error loading attendance: $e');
 //   }
-// }
 
 //   // Navigate to previous week
 //   void _goToPreviousWeek() {
-//     setState(() {
-//       currentWeekStart = currentWeekStart.subtract(Duration(days: 7));
-//       _isAttendanceLoaded = false;
-//       _loadAttendanceData();
-//     });
-//   }
-
-//   // Navigate to next week
-//   void _goToNextWeek() {
-//     final now = DateTime.now();
-//     if (currentWeekStart.isBefore(now)) {
+//     // Check if the previous week would be before the semester start date
+//     DateTime previousWeekStart = currentWeekStart.subtract(Duration(days: 7));
+    
+//     if (_semesterStartDate != null && previousWeekStart.isBefore(_semesterStartDate!)) {
+//       // Set to semester start date
 //       setState(() {
-//         currentWeekStart = currentWeekStart.add(Duration(days: 7));
+//         currentWeekStart = _semesterStartDate!;
+//         _isAttendanceLoaded = false;
+//         _loadAttendanceData();
+//       });
+//     } else {
+//       setState(() {
+//         currentWeekStart = previousWeekStart;
 //         _isAttendanceLoaded = false;
 //         _loadAttendanceData();
 //       });
 //     }
 //   }
 
+//   // Navigate to next week
+//   void _goToNextWeek() {
+//     // Calculate the end of the current week
+//     DateTime nextWeekStart = currentWeekStart.add(Duration(days: 7));
+//     DateTime currentWeekEnd = nextWeekStart.add(Duration(days: 4)); // Friday of next week
+    
+//     // Check if the next week would be after the semester end date
+//     if (_semesterEndDate != null && currentWeekEnd.isAfter(_semesterEndDate!)) {
+//       // Don't allow moving past the semester end date
+//       return;
+//     }
+    
+//     setState(() {
+//       currentWeekStart = nextWeekStart;
+//       _isAttendanceLoaded = false;
+//       _loadAttendanceData();
+//     });
+//   }
+
 //   // Build attendance cell
 //   Widget _buildAttendanceCell(String dateKey, String day, int periodIndex) {
+//     // Check if this date is a holiday
+//     bool isHoliday = _attendanceData[dateKey]?['isHoliday'] ?? false;
+    
+//     if (isHoliday) {
+//       // Return a holiday cell
+//       return Container(
+//         color: Colors.amber[100],
+//         padding: EdgeInsets.all(4),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Icon(
+//               Icons.event_busy,
+//               color: Colors.amber[800],
+//               size: 20,
+//             ),
+//             SizedBox(height: 4),
+//             Text(
+//               'Holiday',
+//               style: GoogleFonts.raleway(
+//                 fontSize: 12,
+//                 fontWeight: FontWeight.bold,
+//                 color: Colors.amber[800],
+//               ),
+//               textAlign: TextAlign.center,
+//             ),
+//           ],
+//         ),
+//       );
+//     }
+    
 //     // Get the time slot for this period
 //     String timeSlot = periodIndex < _timeSlots.length ? _timeSlots[periodIndex] : '';
     
@@ -1226,6 +1679,13 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 
 //   @override
 //   Widget build(BuildContext context) {
+//     // Format semester date range for display
+//     String semesterDateRange = '';
+//     if (_semesterStartDate != null && _semesterEndDate != null) {
+//       semesterDateRange = '${DateFormat('MMM d, yyyy').format(_semesterStartDate!)} - '
+//                          '${DateFormat('MMM d, yyyy').format(_semesterEndDate!)}';
+//     }
+
 //     return Scaffold(
 //       backgroundColor: Colors.white,
 //       body: SafeArea(
@@ -1301,26 +1761,54 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //                     ),
 //                     Container(
 //                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//                       child: Row(
-//                         mainAxisAlignment: MainAxisAlignment.center,
+//                       child: Column(
 //                         children: [
-//                           Text(
-//                             'Semester $_semester',
-//                             style: GoogleFonts.raleway(
-//                               fontSize: 16,
-//                               fontWeight: FontWeight.bold,
-//                               color: Color(0xFF1B5E20),
-//                             ),
+//                           Row(
+//                             mainAxisAlignment: MainAxisAlignment.center,
+//                             children: [
+//                               Text(
+//                                 'Semester $_semester',
+//                                 style: GoogleFonts.raleway(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.bold,
+//                                   color: Color(0xFF1B5E20),
+//                                 ),
+//                               ),
+//                               SizedBox(width: 16),
+//                               Text(
+//                                 'Batch $_batch',
+//                                 style: GoogleFonts.raleway(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.bold,
+//                                   color: Color(0xFF1B5E20),
+//                                 ),
+//                               ),
+//                             ],
 //                           ),
-//                           SizedBox(width: 16),
-//                           Text(
-//                             'Batch $_batch',
-//                             style: GoogleFonts.raleway(
-//                               fontSize: 16,
-//                               fontWeight: FontWeight.bold,
-//                               color: Color(0xFF1B5E20),
+//                           // Show semester type and date range
+//                           if (_semesterType.isNotEmpty)
+//                             Padding(
+//                               padding: const EdgeInsets.only(top: 4.0),
+//                               child: Text(
+//                                 _semesterType,
+//                                 style: GoogleFonts.raleway(
+//                                   fontSize: 14,
+//                                   fontStyle: FontStyle.italic,
+//                                   color: Color(0xFF1B5E20),
+//                                 ),
+//                               ),
 //                             ),
-//                           ),
+//                           if (semesterDateRange.isNotEmpty)
+//                             Padding(
+//                               padding: const EdgeInsets.only(top: 4.0),
+//                               child: Text(
+//                                 semesterDateRange,
+//                                 style: GoogleFonts.raleway(
+//                                   fontSize: 14,
+//                                   color: Color(0xFF1B5E20),
+//                                 ),
+//                               ),
+//                             ),
 //                         ],
 //                       ),
 //                     ),
@@ -1471,11 +1959,13 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //                       child: Row(
 //                         mainAxisAlignment: MainAxisAlignment.center,
 //                         children: [
-//                           _buildLegendItem('Present', Colors.green[100]!, Colors.green[800]!),
+//                           _buildLegendItem('Present', Colors.green[100]!, Colors.green[800]!, '✓'),
 //                           SizedBox(width: 16),
-//                           _buildLegendItem('Absent', Colors.red[100]!, Colors.red[800]!),
+//                           _buildLegendItem('Absent', Colors.red[100]!, Colors.red[800]!, '✗'),
 //                           SizedBox(width: 16),
-//                           _buildLegendItem('No Data', Colors.grey[200]!, Colors.grey[600]!),
+//                           _buildLegendItem('No Data', Colors.grey[200]!, Colors.grey[600]!, '-'),
+//                           SizedBox(width: 16),
+//                           _buildLegendItem('Holiday', Colors.amber[100]!, Colors.amber[800]!, 'H'),
 //                         ],
 //                       ),
 //                     ),
@@ -1486,7 +1976,7 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //     );
 //   }
 
-//   Widget _buildLegendItem(String label, Color backgroundColor, Color textColor) {
+//   Widget _buildLegendItem(String label, Color backgroundColor, Color textColor, String symbol) {
 //     return Row(
 //       children: [
 //         Container(
@@ -1496,6 +1986,16 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 //             color: backgroundColor,
 //             border: Border.all(color: textColor, width: 1),
 //             borderRadius: BorderRadius.circular(2),
+//           ),
+//           child: Center(
+//             child: Text(
+//               symbol,
+//               style: TextStyle(
+//                 color: textColor,
+//                 fontSize: 10,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
 //           ),
 //         ),
 //         SizedBox(width: 4),
@@ -1512,316 +2012,11 @@ class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
 // }
 
 
-// without backend -first setup
-//import 'package:flutter/material.dart';
-// import 'package:google_fonts/google_fonts.dart';
-// import 'package:intl/intl.dart';
-// import 'dart:math';
 
-// class WeeklyAttendancePage extends StatefulWidget {
-//   @override
-//   _WeeklyAttendancePageState createState() => _WeeklyAttendancePageState();
-// }
 
-// class _WeeklyAttendancePageState extends State<WeeklyAttendancePage> {
-//   DateTime currentWeekStart = DateTime.now().subtract(
-//     Duration(days: DateTime.now().weekday - 1)
-//   );
-  
-//   final subjects = {
-//     'DS': 'Data Structures',
-//     'ALGO': 'Algorithm Design',
-//     'WEB': 'Web Development',
-//     'NET': 'Computer Networks',
-//     'OS': 'Operating Systems',
-//     'AI': 'Artificial Intelligence',
-//     'DB': 'Database Management',
-//     'SE': 'Software Engineering'
-//   };
 
-//   final schedule = {
-//     'Monday': ['DS', 'ALGO', 'WEB', 'NET', 'OS', 'AI'],
-//     'Tuesday': ['AI', 'DB', 'SE', 'DS', 'WEB', 'NET'],
-//     'Wednesday': ['OS', 'SE', 'DB', 'ALGO', 'AI', 'DS'],
-//     'Thursday': ['WEB', 'NET', 'OS', 'SE', 'DB', 'ALGO'],
-//     'Friday': ['DB', 'DS', 'AI', 'WEB', 'NET', 'OS'],
-//   };
 
-//   Map<String, Map<String, List<bool>>> sampleAttendance = {};
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     DateTime fourWeeksAgo = DateTime.now().subtract(Duration(days: 28));
-//     DateTime current = fourWeeksAgo;
-    
-//     while (current.isBefore(DateTime.now())) {
-//       if (current.weekday <= 5) {
-//         String dateKey = DateFormat('yyyy-MM-dd').format(current);
-//         sampleAttendance[dateKey] = {
-//           'attendance': List.generate(6, (index) => Random().nextBool())
-//         };
-//       }
-//       current = current.add(Duration(days: 1));
-//     }
-//   }
 
-//   String _getTimeSlot(int periodIndex) {
-//     switch (periodIndex) {
-//       case 0: return '9:00 - 10:00';
-//       case 1: return '10:05 - 11:05';
-//       case 2: return '11:10 - 12:10';
-//       case 3: return '1:15 - 2:15';
-//       case 4: return '2:20 - 3:20';
-//       case 5: return '3:25 - 4:25';
-//       default: return '';
-//     }
-//   }
 
-//   Widget _buildAttendanceCell(String day, int periodIndex, bool? isPresent) {
-//     String subject = schedule[day]![periodIndex];
-//     String timeSlot = _getTimeSlot(periodIndex);
-    
-//     return Container(
-//       margin: EdgeInsets.all(2),
-//       decoration: BoxDecoration(
-//         color: isPresent == null 
-//           ? Colors.grey[200]
-//           : (isPresent ? Colors.green[100] : Colors.red[100]),
-//         borderRadius: BorderRadius.circular(4),
-//       ),
-//       child: Padding(
-//         padding: EdgeInsets.all(4),
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Text(
-//               subject,
-//               style: GoogleFonts.raleway(
-//                 fontSize: 12,
-//                 fontWeight: FontWeight.bold,
-//               ),
-//             ),
-//             SizedBox(height: 2),
-//             Text(
-//               timeSlot,
-//               style: GoogleFonts.raleway(
-//                 fontSize: 10,
-//                 color: Colors.grey[600],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body: SafeArea(
-//         child: Container(
-//           decoration: BoxDecoration(
-//             gradient: LinearGradient(
-//               begin: Alignment.topLeft,
-//               end: Alignment.bottomRight,
-//               colors: [
-//                 Color(0xFFE8F5E9),  // Light green
-//                 Colors.white,
-//                 Color(0xFFE8F5E9),  // Light green
-//               ],
-//             ),
-//           ),
-//           child: Column(
-//             children: [
-//               Container(
-//                 padding: EdgeInsets.all(16),
-//                 child: Row(
-//                   children: [
-//                     IconButton(
-//                       icon: Icon(Icons.arrow_back, color: Color(0xFF1B5E20)),
-//                       onPressed: () => Navigator.pop(context),
-//                     ),
-//                     Expanded(
-//                       child: Text(
-//                         'Weekly Attendance',
-//                         style: GoogleFonts.playfairDisplay(
-//                           fontSize: 24,
-//                           fontWeight: FontWeight.bold,
-//                           color: Color(0xFF1B5E20),
-//                         ),
-//                         textAlign: TextAlign.center,
-//                       ),
-//                     ),
-//                     SizedBox(width: 48),
-//                   ],
-//                 ),
-//               ),
-//               Container(
-//                 padding: EdgeInsets.all(16),
-//                 child: Row(
-//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                   children: [
-//                     IconButton(
-//                       icon: Icon(Icons.arrow_back_ios, color: Color(0xFF1B5E20)),
-//                       onPressed: () {
-//                         setState(() {
-//                           currentWeekStart = currentWeekStart.subtract(Duration(days: 7));
-//                         });
-//                       },
-//                     ),
-//                     Text(
-//                       '${DateFormat('MMM d').format(currentWeekStart)} - '
-//                       '${DateFormat('MMM d').format(currentWeekStart.add(Duration(days: 4)))}',
-//                       style: GoogleFonts.raleway(
-//                         fontSize: 18,
-//                         fontWeight: FontWeight.bold,
-//                         color: Color(0xFF1B5E20),
-//                       ),
-//                     ),
-//                     IconButton(
-//                       icon: Icon(Icons.arrow_forward_ios, color: Color(0xFF1B5E20)),
-//                       onPressed: () {
-//                         if (currentWeekStart.isBefore(DateTime.now())) {
-//                           setState(() {
-//                             currentWeekStart = currentWeekStart.add(Duration(days: 7));
-//                           });
-//                         }
-//                       },
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//               Expanded(
-//                 child: SingleChildScrollView(
-//                   child: Padding(
-//                     padding: EdgeInsets.all(16),
-//                     child: Table(
-//                       border: TableBorder.all(
-//                         color: Colors.grey[300]!,
-//                         width: 1,
-//                       ),
-//                       columnWidths: const {
-//                         0: FlexColumnWidth(0.8),
-//                         1: FlexColumnWidth(1),
-//                         2: FlexColumnWidth(1),
-//                         3: FlexColumnWidth(1),
-//                         4: FlexColumnWidth(1),
-//                         5: FlexColumnWidth(1),
-//                         6: FlexColumnWidth(1),
-//                       },
-//                       children: [
-//                         TableRow(
-//                           decoration: BoxDecoration(
-//                             color: Color(0xFF1B5E20).withOpacity(0.1),
-//                           ),
-//                           children: [
-//                             TableCell(
-//                               child: Padding(
-//                                 padding: EdgeInsets.all(8),
-//                                 child: Text(
-//                                   'Day',
-//                                   style: GoogleFonts.raleway(fontWeight: FontWeight.bold),
-//                                   textAlign: TextAlign.center,
-//                                 ),
-//                               ),
-//                             ),
-//                             ...List.generate(6, (index) {
-//                               return TableCell(
-//                                 child: Padding(
-//                                   padding: EdgeInsets.all(8),
-//                                   child: Text(
-//                                     'Period ${index + 1}',
-//                                     style: GoogleFonts.raleway(fontWeight: FontWeight.bold),
-//                                     textAlign: TextAlign.center,
-//                                   ),
-//                                 ),
-//                               );
-//                             }),
-//                           ],
-//                         ),
-//                         ...['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) {
-//                           return TableRow(
-//                             children: [
-//                               TableCell(
-//                                 child: Container(
-//                                   padding: EdgeInsets.all(8),
-//                                   child: Text(
-//                                     day.substring(0, 3),
-//                                     style: GoogleFonts.raleway(
-//                                       fontWeight: FontWeight.bold,
-//                                       fontSize: 12,
-//                                     ),
-//                                     textAlign: TextAlign.center,
-//                                   ),
-//                                 ),
-//                               ),
-//                               ...List.generate(6, (periodIndex) {
-//                                 DateTime currentDate = currentWeekStart.add(
-//                                   Duration(days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(day))
-//                                 );
-//                                 String dateKey = DateFormat('yyyy-MM-dd').format(currentDate);
-//                                 bool? attendance = sampleAttendance[dateKey]?['attendance']?[periodIndex];
-                                
-//                                 return TableCell(
-//                                   child: SizedBox(
-//                                     height: 60,
-//                                     child: _buildAttendanceCell(day, periodIndex, attendance),
-//                                   ),
-//                                 );
-//                               }),
-//                             ],
-//                           );
-//                         }).toList(),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//               Container(
-//                 padding: EdgeInsets.all(16),
-//                 child: Row(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   children: [
-//                     _buildLegendItem('Present', Colors.green[100]!, Colors.green[800]!),
-//                     SizedBox(width: 16),
-//                     _buildLegendItem('Absent', Colors.red[100]!, Colors.red[800]!),
-//                   ],
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildLegendItem(String label, Color backgroundColor, Color iconColor) {
-//     return Row(
-//       children: [
-//         Container(
-//           width: 24,
-//           height: 24,
-//           decoration: BoxDecoration(
-//             color: backgroundColor,
-//             borderRadius: BorderRadius.circular(4),
-//           ),
-//           child: Icon(
-//             label == 'Present' ? Icons.check : Icons.close,
-//             color: iconColor,
-//             size: 16,
-//           ),
-//         ),
-//         SizedBox(width: 8),
-//         Text(
-//           label,
-//           style: GoogleFonts.raleway(
-//             fontSize: 14,
-//             fontWeight: FontWeight.w500,
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }

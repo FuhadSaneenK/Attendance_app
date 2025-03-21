@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pro_1/screens/admin/student_part/add%20studentuser/add_timetable.dart';
+import 'package:pro_1/screens/admin/student_part/add_timetable.dart';
 import 'package:pro_1/screens/admin/student_part/add%20studentuser/bulk_student_upload.dart';
 import 'package:pro_1/screens/admin/student_part/add%20studentuser/single_student_upload.dart';
+import 'package:pro_1/screens/admin/student_part/semester_details.dart';
 
 
 class StudentManagementPage extends StatefulWidget {
@@ -32,6 +33,7 @@ class _StudentManagementPageState extends State<StudentManagementPage> {
   bool _isViewStudentsSectionVisible = false;
   bool _isAddStudentsSectionVisible = false;
   bool _isAddTimetableSectionVisible = false;
+  bool _isAddSemesterDetailsSectionVisible = false;
   
   // Track which add student tab is active
   int _selectedAddStudentTab = 0;
@@ -156,7 +158,7 @@ class _StudentManagementPageState extends State<StudentManagementPage> {
                 SizedBox(height: 24),
                 
 
-
+              //add timetable
                 _buildSectionButton(
                   title: 'Add Timetable',
                   isExpanded: _isAddTimetableSectionVisible,
@@ -188,6 +190,47 @@ class _StudentManagementPageState extends State<StudentManagementPage> {
                     ),
                     child: TimetableForm(),
                   ),
+
+                  SizedBox(height: 24),
+                  Divider(color: Color(0xFF1B5E20), thickness: 1),
+                  SizedBox(height: 24),
+
+
+              // Add Semester Details Button
+                _buildSectionButton(
+                  title: 'Add Current  Semester Details',
+                  isExpanded: _isAddSemesterDetailsSectionVisible,
+                  onPressed: () {
+                    setState(() {
+                      _isAddSemesterDetailsSectionVisible = !_isAddSemesterDetailsSectionVisible;
+                      if (_isAddSemesterDetailsSectionVisible) {
+                        _isViewStudentsSectionVisible = false;
+                        _isAddStudentsSectionVisible = false;
+                        _isAddTimetableSectionVisible = false;
+                      }
+                    });
+                  },
+                ),
+
+                // Add Semester Details Section (visible only when clicked)
+                if (_isAddSemesterDetailsSectionVisible) 
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: SemesterDetailsForm(),
+                  ),
+
+                  
 
               ],
             ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pro_1/screens/auth/authentication.dart';
+import 'package:pro_1/services/authentication.dart';
 import 'package:pro_1/screens/admin/admin_homepage.dart';
 
 class AdminLoginPage extends StatefulWidget {
