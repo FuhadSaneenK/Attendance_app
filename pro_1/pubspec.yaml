@@ -37,7 +37,14 @@ dependencies:
   file_picker: ^5.3.3
   excel: ^2.1.0
   path_provider: ^2.1.1 
+  google_sign_in: ^6.1.5 
   
+  #email_alert
+  device_info_plus: ^9.0.0
+  crypto: ^3.0.3
+  flutter_email_sender: ^6.0.1
+  mailer: ^6.0.1
+  shared_preferences: ^2.2.2
 
 
   # The following adds the Cupertino Icons font to your application.

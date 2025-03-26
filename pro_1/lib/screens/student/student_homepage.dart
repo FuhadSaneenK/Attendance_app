@@ -582,7 +582,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => AnnouncementsPage()),
+                                MaterialPageRoute(builder: (context) => StudentAnnouncementsPage()),
                               );
                             },
                           ),

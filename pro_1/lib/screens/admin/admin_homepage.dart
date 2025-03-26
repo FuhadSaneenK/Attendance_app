@@ -1,11 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Add this import
 import 'package:pro_1/screens/admin/admin-profile.dart';
 import 'package:pro_1/screens/admin/student_part/admin_student_manage.dart';
 import 'package:pro_1/screens/admin/announcement.dart';
 import 'package:pro_1/screens/admin/teacher_part/admin_teacher_manage.dart';
+import 'package:pro_1/user_select.dart'; // Import your login page
 
 class AdminHomePage extends StatelessWidget {
+  // Sign out method moved outside build method for better organization
+  Future<void> _signOut(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => UserSelectionPage()),
+        (route) => false,
+      );
+    } catch (e) {
+      print("Error signing out: $e");
+      // Show an error snackbar if sign out fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out. Please try again.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -113,14 +132,14 @@ class AdminHomePage extends StatelessWidget {
                             },
                           ),
 
-                          _buildMenuItem(
-                            icon: Icons.settings_outlined,
-                            title: 'Settings',
-                            subtitle: 'Configure system settings',
-                            onTap: () {
-                              // Navigate to Settings page
-                            },
-                          ),
+                          // _buildMenuItem(
+                          //   icon: Icons.settings_outlined,
+                          //   title: 'Settings',
+                          //   subtitle: 'Configure system settings',
+                          //   onTap: () {
+                          //     // Navigate to Settings page
+                          //   },
+                          // ),
                           
                           SizedBox(height: 24),
                         ],
@@ -245,14 +264,17 @@ class AdminHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
+
+Widget _buildDrawer(BuildContext context) {
+  return Drawer(
+    child: SafeArea(
       child: Container(
         color: Colors.white,
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            DrawerHeader(
+            // Header section
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -263,153 +285,166 @@ class AdminHomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+              child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 35,
+                    radius: 30,
                     backgroundColor: Color(0xFF1B5E20),
                     child: Text(
                       'A',
                       style: GoogleFonts.playfairDisplay(
-                        fontSize: 28,
+                        fontSize: 24,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Admin Portal',
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1B5E20),
-                    ),
-                  ),
-                  Text(
-                    'System Administrator',
-                    style: GoogleFonts.raleway(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                      letterSpacing: 0.5,
-                    ),
+                  SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Admin Portal',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1B5E20),
+                        ),
+                      ),
+                      Text(
+                        'Administrator',
+                        style: GoogleFonts.raleway(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            _buildDrawerItem(
-              icon: Icons.dashboard_outlined,
-              title: 'Dashboard',
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            // User Management with submenu in drawer
-            ExpansionTile(
-              leading: Icon(Icons.people_alt_outlined, color: Color(0xFF1B5E20), size: 24),
-              title: Text(
-                'User Management',
-                style: GoogleFonts.raleway(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
-                ),
+            
+            // Menu items - Using Expanded to take remaining space with scrolling
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildDrawerItem(
+                    icon: Icons.dashboard_outlined,
+                    title: 'Dashboard',
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  // User Management with submenu
+                  ExpansionTile(
+                    leading: Icon(Icons.people_alt_outlined, color: Color(0xFF1B5E20), size: 24),
+                    title: Text(
+                      'User Management',
+                      style: GoogleFonts.raleway(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 56),
+                        title: Text(
+                          'Student Management',
+                          style: GoogleFonts.raleway(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        leading: Icon(Icons.school, color: Color(0xFF1B5E20), size: 20),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context, 
+                            MaterialPageRoute(
+                              builder: (context) => StudentManagementPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 56),
+                        title: Text(
+                          'Teacher Management',
+                          style: GoogleFonts.raleway(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        leading: Icon(Icons.person_pin, color: Color(0xFF1B5E20), size: 20),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context, 
+                            MaterialPageRoute(
+                              builder: (context) => TeacherManagementPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.announcement_outlined,
+                    title: 'Announcements',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(
+                          builder: (context) => AnnouncementsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.person_outline,
+                    title: 'Profile',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(
+                          builder: (context) => AdminProfilePage(),
+                        ),
+                      );
+                    },
+                  ),
+                  // _buildDrawerItem(
+                  //   icon: Icons.settings_outlined,
+                  //   title: 'Settings',
+                  //   onTap: () {
+                  //     Navigator.pop(context);
+                  //     // Navigate to Settings page
+                  //   },
+                  // ),
+                ],
               ),
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 56),
-                  title: Text(
-                    'Student Management',
-                    style: GoogleFonts.raleway(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  leading: Icon(Icons.school, color: Color(0xFF1B5E20), size: 20),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Navigate to Student Management page
-                    Navigator.push(
-                      context, 
-                      MaterialPageRoute(
-                        builder: (context) => StudentManagementPage(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 56),
-                  title: Text(
-                    'Teacher Management',
-                    style: GoogleFonts.raleway(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  leading: Icon(Icons.person_pin, color: Color(0xFF1B5E20), size: 20),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Navigate to Teacher Management page
-                    Navigator.push(
-                      context, 
-                      MaterialPageRoute(
-                        builder: (context) => TeacherManagementPage(),
-                      ),
-                    );
-                  },
-                ),
-              ],
             ),
-            _buildDrawerItem(
-              icon: Icons.announcement_outlined,
-              title: 'Announcements',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context, 
-                  MaterialPageRoute(
-                    builder: (context) => AnnouncementsPage(),
-                  ),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.person_outline,
-              title: 'Profile',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context, 
-                  MaterialPageRoute(
-                    builder: (context) => AdminProfilePage(),
-                  ),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.settings_outlined,
-              title: 'Settings',
-              onTap: () {
-                Navigator.pop(context);
-                // Navigate to Settings page
-              },
-            ),
+            
+            // Divider and Logout section at the bottom
             Divider(thickness: 1),
             _buildDrawerItem(
               icon: Icons.logout,
               title: 'Logout',
               onTap: () {
                 Navigator.pop(context);
-                // Add logout logic here
+                _signOut(context);
               },
             ),
+            SizedBox(height: 8), // Small padding at the bottom
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDrawerItem({
     required IconData icon,
@@ -532,3 +567,5 @@ class AdminHomePage extends StatelessWidget {
     );
   }
 }
+
+

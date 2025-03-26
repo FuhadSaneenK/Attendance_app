@@ -76,20 +76,23 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Administrative Portal',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1B5E20),
-                        letterSpacing: 0.5,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Administrative Portal',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1B5E20),
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 8),
                     Text(
@@ -101,11 +104,11 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 32),
+                    SizedBox(height: 24),
 
                     // Login Form Section
                     Container(
-                      padding: EdgeInsets.all(24),
+                      padding: EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
@@ -120,25 +123,33 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.admin_panel_settings,
-                                color: Color(0xFF1B5E20),
-                                size: 28,
+                          // Responsive header
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.admin_panel_settings,
+                                    color: Color(0xFF1B5E20),
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Administrator Sign In',
+                                    style: GoogleFonts.playfairDisplay(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1B5E20),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Administrator Sign In',
-                                style: GoogleFonts.playfairDisplay(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1B5E20),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          SizedBox(height: 24),
+                          SizedBox(height: 20),
                           Text(
                             'Admin ID',
                             style: GoogleFonts.raleway(
@@ -172,10 +183,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
                               ),
+                              // Make sure content fits within field
+                              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                             ),
                             keyboardType: TextInputType.emailAddress,
                           ),
-                          SizedBox(height: 20),
+                          SizedBox(height: 16),
                           Text(
                             'Password',
                             style: GoogleFonts.raleway(
@@ -222,6 +235,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
                               ),
+                              // Make sure content fits within field
+                              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                             ),
                             obscureText: _obscurePassword,
                           ),
@@ -239,7 +254,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               ),
                             ),
                             
-                          SizedBox(height: 24),
+                          SizedBox(height: 20),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
@@ -247,7 +262,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF1B5E20),
                                 foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 16),
+                                padding: EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -279,26 +294,23 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     // Additional Options Section
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            icon: Icon(Icons.arrow_back_outlined, size: 18),
-                            label: Text(
-                              'Back to Selection',
-                              style: GoogleFonts.raleway(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Color(0xFF1B5E20),
+                      child: Center(
+                        child: TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          icon: Icon(Icons.arrow_back_outlined, size: 16),
+                          label: Text(
+                            'Back to Selection',
+                            style: GoogleFonts.raleway(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
-                        ],
+                          style: TextButton.styleFrom(
+                            foregroundColor: Color(0xFF1B5E20),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -318,25 +330,63 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // import 'package:flutter/material.dart';
 // import 'package:google_fonts/google_fonts.dart';
+// import 'package:pro_1/services/authentication.dart';
+// import 'package:pro_1/screens/admin/admin_homepage.dart';
 
-// class AdminLoginPage extends StatelessWidget {
+// class AdminLoginPage extends StatefulWidget {
+//   @override
+//   _AdminLoginPageState createState() => _AdminLoginPageState();
+// }
+
+// class _AdminLoginPageState extends State<AdminLoginPage> {
+//   final TextEditingController _adminIdController = TextEditingController();
+//   final TextEditingController _passwordController = TextEditingController();
+//   final AuthService _authService = AuthService();
+  
+//   bool _isLoading = false;
+//   String _errorMessage = '';
+//   bool _obscurePassword = true;
+
+//   Future<void> _signIn() async {
+//     setState(() {
+//       _isLoading = true;
+//       _errorMessage = '';
+//     });
+
+//     AuthResult result = await _authService.signInWithEmailAndPassword(
+//       email: _adminIdController.text,
+//       password: _passwordController.text,
+//       expectedRole: 'admin',
+//     );
+
+//     if (result.success) {
+//       // Navigate to AdminHomePage on successful verification
+//       Navigator.pushReplacement(
+//         context,
+//         MaterialPageRoute(
+//           builder: (context) => AdminHomePage(),
+//         ),
+//       );
+//     } else {
+//       setState(() {
+//         _errorMessage = result.errorMessage;
+//       });
+//     }
+
+//     setState(() {
+//       _isLoading = false;
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     _adminIdController.dispose();
+//     _passwordController.dispose();
+//     super.dispose();
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
@@ -431,6 +481,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 //                           ),
 //                           SizedBox(height: 8),
 //                           TextField(
+//                             controller: _adminIdController,
 //                             decoration: InputDecoration(
 //                               hintText: 'Enter your admin ID',
 //                               prefixIcon: Icon(
@@ -454,6 +505,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 //                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
 //                               ),
 //                             ),
+//                             keyboardType: TextInputType.emailAddress,
 //                           ),
 //                           SizedBox(height: 20),
 //                           Text(
@@ -466,15 +518,25 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 //                           ),
 //                           SizedBox(height: 8),
 //                           TextField(
+//                             controller: _passwordController,
 //                             decoration: InputDecoration(
 //                               hintText: 'Enter your password',
 //                               prefixIcon: Icon(
 //                                 Icons.lock_outline,
 //                                 color: Color(0xFF1B5E20),
 //                               ),
-//                               suffixIcon: Icon(
-//                                 Icons.visibility_outlined,
-//                                 color: Colors.grey[400],
+//                               suffixIcon: IconButton(
+//                                 icon: Icon(
+//                                   _obscurePassword 
+//                                       ? Icons.visibility_outlined 
+//                                       : Icons.visibility_off_outlined,
+//                                   color: Colors.grey[400],
+//                                 ),
+//                                 onPressed: () {
+//                                   setState(() {
+//                                     _obscurePassword = !_obscurePassword;
+//                                   });
+//                                 },
 //                               ),
 //                               hintStyle: TextStyle(
 //                                 color: Colors.grey[400],
@@ -493,15 +555,27 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 //                                 borderSide: BorderSide(color: Color(0xFF1B5E20)),
 //                               ),
 //                             ),
-//                             obscureText: true,
+//                             obscureText: _obscurePassword,
 //                           ),
+                          
+//                           // Display error message if there is one
+//                           if (_errorMessage.isNotEmpty)
+//                             Padding(
+//                               padding: const EdgeInsets.only(top: 12.0),
+//                               child: Text(
+//                                 _errorMessage,
+//                                 style: TextStyle(
+//                                   color: Colors.red,
+//                                   fontSize: 14,
+//                                 ),
+//                               ),
+//                             ),
+                            
 //                           SizedBox(height: 24),
 //                           SizedBox(
 //                             width: double.infinity,
 //                             child: ElevatedButton(
-//                               onPressed: () {
-//                                 // Handle admin login logic
-//                               },
+//                               onPressed: _isLoading ? null : _signIn,
 //                               style: ElevatedButton.styleFrom(
 //                                 backgroundColor: Color(0xFF1B5E20),
 //                                 foregroundColor: Colors.white,
@@ -511,14 +585,23 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 //                                 ),
 //                                 elevation: 0,
 //                               ),
-//                               child: Text(
-//                                 'Sign In',
-//                                 style: GoogleFonts.raleway(
-//                                   fontSize: 16,
-//                                   fontWeight: FontWeight.w600,
-//                                   letterSpacing: 1,
-//                                 ),
-//                               ),
+//                               child: _isLoading
+//                                   ? SizedBox(
+//                                       height: 20,
+//                                       width: 20,
+//                                       child: CircularProgressIndicator(
+//                                         color: Colors.white,
+//                                         strokeWidth: 2,
+//                                       ),
+//                                     )
+//                                   : Text(
+//                                       'Sign In',
+//                                       style: GoogleFonts.raleway(
+//                                         fontSize: 16,
+//                                         fontWeight: FontWeight.w600,
+//                                         letterSpacing: 1,
+//                                       ),
+//                                     ),
 //                             ),
 //                           ),
 //                         ],
@@ -560,3 +643,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 //     );
 //   }
 // }
+
+
+
+
+
+
+
+
+
+
