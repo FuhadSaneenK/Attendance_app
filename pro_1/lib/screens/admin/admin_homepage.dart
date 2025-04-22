@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Add this import
 import 'package:pro_1/screens/admin/admin-profile.dart';
+import 'package:pro_1/screens/admin/semester_promotion.dart';
 import 'package:pro_1/screens/admin/student_part/admin_student_manage.dart';
 import 'package:pro_1/screens/admin/announcement.dart';
 import 'package:pro_1/screens/admin/teacher_part/admin_teacher_manage.dart';
@@ -114,6 +115,19 @@ class AdminHomePage extends StatelessWidget {
                                 MaterialPageRoute(
                                   builder: (context) => AnnouncementsPage(),
                                 ),
+                              );
+                            },
+                          ),
+
+                            _buildMenuItem(
+                            icon: Icons.announcement_outlined,
+                            title: 'Semester Promotion',
+                            subtitle: ' Promote students to the next semester based on pass/fail status',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SemesterPromotionPage()),
                               );
                             },
                           ),

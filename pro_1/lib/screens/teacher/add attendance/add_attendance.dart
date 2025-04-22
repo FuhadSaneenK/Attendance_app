@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pro_1/screens/teacher/add%20attendance/attendance_service.dart';
 
 class MarkAttendancePage extends StatefulWidget {
@@ -19,6 +20,9 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
   bool isLoadingSubjects = false;
   bool isLoadingPeriods = false;
   
+  // Teacher ID
+  String _teacherId = '';
+  
   // Variables for theory/practical and batches
   String selectedType = 'Theory'; // Default to Theory
   List<String> selectedBatches = [];
@@ -31,6 +35,9 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Auth instance
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   
   // Subject list from Firebase
   List<String> subjects = [];
@@ -64,8 +71,43 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
   @override
   void initState() {
     super.initState();
+    _loadTeacherId();
     _loadHolidays();
-    _loadClasses();
+  }
+
+  // Load teacher ID
+  Future<void> _loadTeacherId() async {
+    setState(() => isLoading = true);
+    
+    try {
+      User? currentUser = _auth.currentUser;
+      
+      if (currentUser != null) {
+        // Get teacher ID from user document
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+            
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          setState(() {
+            _teacherId = userData['teacherId'] ?? currentUser.uid;
+          });
+        } else {
+          setState(() {
+            _teacherId = currentUser.uid;
+          });
+        }
+        
+        // Now load classes
+        _loadClasses();
+      }
+    } catch (e) {
+      print('Error loading teacher ID: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   // Load holidays from Firebase
@@ -96,62 +138,36 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
   }
 
   Future<void> _loadSubjectsForSemester(String semester) async {
+    if (_teacherId.isEmpty) {
+      _showErrorSnackBar('Teacher ID not found');
+      return;
+    }
+    
     setState(() => isLoadingSubjects = true);
     try {
-      // Extract semester number from the class name
-      String semesterNumber = semester.replaceAll(RegExp(r'[^0-9]'), '');
-      
       // Get current day of week
       String currentDay = DateFormat('EEEE').format(selectedDate);
       if (!days.contains(currentDay)) {
         currentDay = 'Monday'; // Default to Monday if weekend
       }
 
-      // Fetch the timetable for the selected semester
-      final timetableDoc = await _firestore
-          .collection('timetable')
-          .doc(semesterNumber)
-          .get();
-
-      if (timetableDoc.exists) {
-        final data = timetableDoc.data() as Map<String, dynamic>;
-        
-        // Extract all subjects from timetable for the current day
-        Set<String> subjectsSet = {};
-        
-        if (data.containsKey(currentDay)) {
-          final dayData = data[currentDay] as Map<String, dynamic>;
-          
-          // Add all non-empty subjects to the set
-          dayData.forEach((timeSlot, subject) {
-            if (subject != null && subject.toString().isNotEmpty) {
-              subjectsSet.add(subject.toString());
-            }
-          });
-        }
-        
-        // Convert set to list to remove duplicates
-        List<String> subjectsList = subjectsSet.toList();
-        
-        // Sort alphabetically
-        subjectsList.sort();
-        
-        setState(() {
-          subjects = subjectsList;
-          selectedSubject = ''; // Reset subject selection
-          selectedPeriod = ''; // Reset period selection
-          selectedPeriods = []; // Reset multi-period selection
-          availablePeriods = []; // Reset available periods
-        });
-      } else {
-        setState(() {
-          subjects = [];
-          selectedSubject = '';
-          selectedPeriod = '';
-          selectedPeriods = [];
-          availablePeriods = [];
-        });
-        _showErrorSnackBar('No timetable found for this semester');
+      // Load only subjects that this teacher teaches on this day
+      List<String> teacherSubjects = await AttendanceService.getTeacherSubjectsForDay(
+        teacherId: _teacherId,
+        semesterId: semester,
+        dayOfWeek: currentDay,
+      );
+      
+      setState(() {
+        subjects = teacherSubjects;
+        selectedSubject = ''; // Reset subject selection
+        selectedPeriod = ''; // Reset period selection
+        selectedPeriods = []; // Reset multi-period selection
+        availablePeriods = []; // Reset available periods
+      });
+      
+      if (teacherSubjects.isEmpty) {
+        _showErrorSnackBar('You do not teach any subjects in this semester on ${currentDay}');
       }
     } catch (e) {
       _showErrorSnackBar('Error loading subjects: $e');
@@ -523,7 +539,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
                                               border: Border.all(color: Colors.grey.shade200),
                                             ),
                                             child: Text(
-                                              'No subjects available for this semester',
+                                              'No subjects available that you teach in this semester',
                                               style: GoogleFonts.raleway(
                                                 color: Colors.grey[600],
                                               ),
@@ -1050,6 +1066,9 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 
 
 
+
+
+
 // import 'package:flutter/material.dart';
 // import 'package:google_fonts/google_fonts.dart';
 // import 'package:intl/intl.dart';
@@ -1076,6 +1095,10 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 //   List<String> selectedBatches = [];
 //   List<String> selectedPeriods = [];
 //   bool isMultiPeriod = false;
+  
+//   // Holiday data
+//   List<DateTime> holidays = [];
+//   bool isLoadingHolidays = false;
 
 //   // Firestore instance
 //   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -1112,7 +1135,24 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 //   @override
 //   void initState() {
 //     super.initState();
+//     _loadHolidays();
 //     _loadClasses();
+//   }
+
+//   // Load holidays from Firebase
+//   Future<void> _loadHolidays() async {
+//     setState(() => isLoadingHolidays = true);
+//     try {
+//       // Get holidays from Firestore
+//       final holidaysList = await AttendanceService.getHolidays();
+//       setState(() {
+//         holidays = holidaysList;
+//       });
+//     } catch (e) {
+//       _showErrorSnackBar('Error loading holidays: $e');
+//     } finally {
+//       setState(() => isLoadingHolidays = false);
+//     }
 //   }
 
 //   Future<void> _loadClasses() async {
@@ -1395,6 +1435,60 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 //     });
 //   }
 
+//   // Check if a date is a holiday
+//   bool _isHoliday(DateTime date) {
+//     final dayName = DateFormat('EEEE').format(date);
+    
+//     // Check if it's weekend
+//     if (dayName == 'Saturday' || dayName == 'Sunday') {
+//       return true;
+//     }
+    
+//     // Check if it's in the holidays list
+//     for (var holiday in holidays) {
+//       if (DateFormat('yyyy-MM-dd').format(holiday) == 
+//           DateFormat('yyyy-MM-dd').format(date)) {
+//         return true;
+//       }
+//     }
+    
+//     return false;
+//   }
+
+//   // Custom date selection method with holiday restrictions
+//   Future<void> _selectDate(BuildContext context) async {
+//     final DateTime? picked = await showDatePicker(
+//       context: context,
+//       initialDate: selectedDate,
+//       firstDate: DateTime(2024),
+//       lastDate: DateTime.now(),
+//       selectableDayPredicate: (DateTime date) {
+//         // Allow selection only if not a holiday
+//         return !_isHoliday(date);
+//       },
+//       builder: (context, child) {
+//         return Theme(
+//           data: Theme.of(context).copyWith(
+//             colorScheme: ColorScheme.light(
+//               primary: primaryColor,
+//               onPrimary: Colors.white,
+//               onSurface: Colors.black,
+//             ),
+//           ),
+//           child: child!,
+//         );
+//       },
+//     );
+    
+//     if (picked != null) {
+//       setState(() {
+//         selectedDate = picked;
+//       });
+//       // Reload subjects when date changes since it affects day of week
+//       _loadSubjectsForSemester(selectedClass);
+//     }
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
@@ -1429,19 +1523,9 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 //                 ),
 //                 IconButton(
 //                   icon: Icon(Icons.calendar_today),
-//                   onPressed: () async {
-//                     final DateTime? picked = await showDatePicker(
-//                       context: context,
-//                       initialDate: selectedDate,
-//                       firstDate: DateTime(2024),
-//                       lastDate: DateTime.now(),
-//                     );
-//                     if (picked != null) {
-//                       setState(() => selectedDate = picked);
-//                       // Reload subjects when date changes since it affects day of week
-//                       _loadSubjectsForSemester(selectedClass);
-//                     }
-//                   },
+//                   onPressed: isLoadingHolidays 
+//                       ? null 
+//                       : () => _selectDate(context),
 //                 ),
 //               ],
 //             ),
@@ -1862,7 +1946,7 @@ class _MarkAttendancePageState extends State<MarkAttendancePage> {
 //                                             ),
 //                                           ),
 //                                         ],
-//                                       )).toList(),
+//                                         )),
 //                                     ],
 //                                   ),
 //                               ],

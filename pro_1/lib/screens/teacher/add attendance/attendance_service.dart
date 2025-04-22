@@ -100,6 +100,74 @@ class AttendanceService {
     }
     return studentList;
   }
+  
+  /// Fetch subjects taught by a teacher for a specific semester and day
+  static Future<List<String>> getTeacherSubjectsForDay({
+    required String teacherId,
+    required String semesterId,
+    required String dayOfWeek,
+  }) async {
+    Set<String> teacherSubjects = {};
+    
+    try {
+      // Extract semester number from semesterId
+      String semesterNumber = semesterId.replaceAll(RegExp(r'[^0-9]'), '');
+      
+      // Fetch all subjects assigned to this teacher for this semester
+      QuerySnapshot subjectsSnapshot = await _firestore
+          .collection('classes')
+          .doc('Sem$semesterNumber')
+          .collection('subjects')
+          .where('teacherIds', arrayContains: teacherId)
+          .get();
+      
+      // Create a map of subject displayNames by their IDs for later lookup
+      Map<String, String> subjectDisplayNames = {};
+      for (var doc in subjectsSnapshot.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+        String displayName = '${data['code']} - ${data['name']}';
+        subjectDisplayNames[doc.id] = displayName;
+      }
+      
+      // If we don't have any subjects assigned to this teacher, return empty list
+      if (subjectDisplayNames.isEmpty) {
+        return [];
+      }
+      
+      // Now check the timetable for this semester to see when these subjects occur
+      DocumentSnapshot timetableDoc = await _firestore
+          .collection('timetable')
+          .doc(semesterNumber)
+          .get();
+      
+      if (timetableDoc.exists) {
+        Map<String, dynamic> data = timetableDoc.data() as Map<String, dynamic>;
+        
+        // Get the data for the specified day
+        if (data.containsKey(dayOfWeek)) {
+          Map<String, dynamic> dayData = data[dayOfWeek] as Map<String, dynamic>;
+          
+          // Find all subjects in the timetable for this day
+          dayData.forEach((timeSlot, subjectName) {
+            if (subjectName != null && subjectName.toString().isNotEmpty) {
+              // If this is one of the teacher's subjects, add it to the set
+              if (subjectDisplayNames.values.contains(subjectName.toString())) {
+                teacherSubjects.add(subjectName.toString());
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching teacher subjects: $e');
+    }
+    
+    // Convert set to list and sort
+    List<String> subjectsList = teacherSubjects.toList();
+    subjectsList.sort();
+    
+    return subjectsList;
+  }
 
   /// Submit attendance for a class
   static Future<bool> submitAttendance({
@@ -332,7 +400,6 @@ class AttendanceService {
 
 
 
-
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:intl/intl.dart';
 
@@ -351,6 +418,62 @@ class AttendanceService {
 //       print('Error fetching classes: $e');
 //     }
 //     return classList;
+//   }
+
+//   /// Fetch holidays from Firestore
+//   static Future<List<DateTime>> getHolidays() async {
+//     List<DateTime> holidaysList = [];
+//     try {
+//       // Get current semester information
+//       DocumentSnapshot semesterDoc = await _firestore
+//           .collection('attendance')
+//           .doc('current_semester')
+//           .get();
+      
+//       if (semesterDoc.exists) {
+//         Map<String, dynamic> data = semesterDoc.data() as Map<String, dynamic>;
+        
+//         // Extract holidays list from semester document
+//         if (data.containsKey('holidays')) {
+//           List<dynamic> holidaysData = data['holidays'];
+          
+//           for (var holidayStr in holidaysData) {
+//             try {
+//               // Parse the date string to DateTime
+//               DateTime holidayDate = DateFormat('yyyy-MM-dd').parse(holidayStr.toString());
+//               holidaysList.add(holidayDate);
+//             } catch (e) {
+//               print('Error parsing holiday date: $e');
+//             }
+//           }
+//         }
+//       }
+//     } catch (e) {
+//       print('Error fetching holidays: $e');
+//     }
+//     return holidaysList;
+//   }
+
+//   /// Check if a date is a weekend or holiday
+//   static Future<bool> isHolidayOrWeekend(DateTime date) async {
+//     // Check if it's a weekend
+//     String dayName = DateFormat('EEEE').format(date);
+//     if (dayName == 'Saturday' || dayName == 'Sunday') {
+//       return true;
+//     }
+    
+//     // Check if it's a holiday
+//     List<DateTime> holidays = await getHolidays();
+//     String dateStr = DateFormat('yyyy-MM-dd').format(date);
+    
+//     for (DateTime holiday in holidays) {
+//       String holidayStr = DateFormat('yyyy-MM-dd').format(holiday);
+//       if (holidayStr == dateStr) {
+//         return true;
+//       }
+//     }
+    
+//     return false;
 //   }
 
 //   /// Fetch students for a selected class with optional batch filtering
@@ -391,6 +514,13 @@ class AttendanceService {
 //     List<String>? batches, // Only used for practical sessions
 //   }) async {
 //     try {
+//       // First check if the selected date is a holiday or weekend
+//       bool isHoliday = await isHolidayOrWeekend(date);
+//       if (isHoliday) {
+//         print('Cannot submit attendance for a holiday or weekend');
+//         return false;
+//       }
+      
 //       String formattedDate = DateFormat('yyyy-MM-dd').format(date);
 //       String semesterType = await _getSemesterType();
 
@@ -437,7 +567,7 @@ class AttendanceService {
 //           'lastUpdated': FieldValue.serverTimestamp(),
 //         }, SetOptions(merge: true));
         
-//         // NEW: Update subject-wise attendance counter
+//         // Update subject-wise attendance counter
 //         DocumentReference subjectAttendanceRef = _firestore
 //             .collection('subject_attendance')
 //             .doc(semesterType)
@@ -473,6 +603,13 @@ class AttendanceService {
 //   }) async {
 //     List<Map<String, dynamic>> attendanceList = [];
 //     try {
+//       // First check if the selected date is a holiday or weekend
+//       bool isHoliday = await isHolidayOrWeekend(date);
+//       if (isHoliday) {
+//         print('Cannot get attendance for a holiday or weekend');
+//         return [];
+//       }
+      
 //       String formattedDate = DateFormat('yyyy-MM-dd').format(date);
 
 //       DocumentSnapshot snapshot = await _firestore
@@ -527,7 +664,7 @@ class AttendanceService {
 //     }
 //   }
   
-//   /// NEW: Get subject-wise attendance counters for a specific student
+//   /// Get subject-wise attendance counters for a specific student
 //   static Future<List<Map<String, dynamic>>> getStudentSubjectAttendance({
 //     required String classId,
 //     required String studentId,
@@ -590,6 +727,4 @@ class AttendanceService {
 //     }
 //   }
 // }
-
-
 
